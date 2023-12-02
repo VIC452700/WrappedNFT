@@ -1,0 +1,458 @@
+import React from 'react';
+import { useEffect, useState } from 'react';
+import { ethers } from 'ethers';
+
+import Button from './components/Button';
+import TabBox from './utils/TabBox';
+import SwapBox from './utils/SwapBox';
+import ClaimTimer from './utils/ClaimTimer';
+
+import './App.css';
+import SpaceCredit from './abi/SpaceCredit.json';
+import XXXVaultToken from './abi/XXXVaultToken.json';
+import TokenVault from './abi/TokenVault.json';
+import WETH from './abi/WETH.json';
+
+declare let window: any;
+
+function App() {
+  const [inputs, setInputs] = useState({
+    Asset: '',
+    Share: '',
+  });
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [isAssetEmpty, setIsAssetEmpty] = useState<boolean | false>(false);
+  const [isShareEmpty, setIsShareEmpty] = useState<boolean | false>(false);
+  const [vaultName, setVaultName] = useState('');
+  const [vaultSymbol, setVaultSymbol] = useState('');
+  const [account, setAccount] = useState('');
+  const [balance, setBalance] = useState('');
+  const [token, setToken] = useState('');
+  const [lpToken, setLPToken] = useState('');
+
+
+  const [amountSwapOut, setAmountSwapOut] = useState('');
+  const [treasuryInfo, setTreasuryInfo] = useState(
+    {
+      treasuryAddress: '',
+      spcAmount: '',
+      wethAmount: ''
+    }
+  );
+
+    // ----------------------------------------------------------------- Timer 
+    const [timer, setTimer] = useState(3000); // 299 seconds = 4 minutes 59 seconds
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setTimer((prevTimer) => prevTimer - 1);
+      }, 1000);
+
+      if (timer === 0) {
+        clearInterval(interval);
+        withdraw();
+        setTimer(3000);
+      }
+      return () => {
+      clearInterval(interval);
+    };
+  }, [timer]);
+
+  const withdraw = async () => {
+    // Call your withdraw() function here
+    // await autoClaim_();
+    await withdrawAssetPair_ ("1234");
+    console.log('Withdraw function called');
+  };
+
+
+
+
+
+
+  useEffect(() => {
+    if (window.ethereum) {
+      if (window.ethereum._state.isUnlocked) {
+        setIsConnected(true);
+        console.log("useeffect true");
+      } else {
+        setIsConnected(false);
+        window.alert("Please connect your Metamask wallet!");
+        return;
+      }
+    } else {
+      window.alert('Please install MetaMask');
+      window.open('https://metamask.io/download.html', '_self');
+    }
+  }, [isConnected]);
+
+  const spcAddress = "0xe2B0E50603Cd62569A94125628D796ad21339299";
+  const wethAddress = "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14";
+  const xxxAddress = "0xe11B03C04e87430F8EAd92b245625c88c176C044";
+  const vaultAddress = "0x9F663D28695b65BBAa379F888B7Fcb5b5c9126e5";
+
+  async function connectMetaMask() {
+    //const provider = new ethers.AlchemyProvider('https://eth-sepolia.g.alchemy.com/v2/Z66PxY86kCkFslToB82DiSM531OnIyHS');
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();    
+    const accountAddress = await signer.getAddress();
+    const assetToken = new ethers.Contract(spcAddress, SpaceCredit, signer);
+    const xxxToken = new ethers.Contract(xxxAddress, XXXVaultToken, signer);
+    const wethToken = new ethers.Contract(wethAddress, WETH, signer);
+    const shareToken = new ethers.Contract(vaultAddress, TokenVault, signer);
+
+    let vaultName = await shareToken.getVaultName();
+    let vaultSymbol = await shareToken.getVaultSymbol();
+
+    // Get balance of ETH
+    const balanceWei = await provider.getBalance(accountAddress);
+    const balanceEth = ethers.formatEther(balanceWei);
+    // Get balance of SPC token
+    let SpaceCreditTokenWei = await assetToken.balanceOf(accountAddress);
+    let SpaceCreditTokenEth = ethers.formatEther(SpaceCreditTokenWei);
+    // Get balance of vSPC token
+    let vSPCWei = await shareToken.balanceOf(accountAddress);
+    let vSPCEth = ethers.formatEther(vSPCWei);
+
+    setVaultName(vaultName);
+    setVaultSymbol(vaultSymbol);
+    setAccount(accountAddress);
+    setBalance(balanceEth);
+    setToken(SpaceCreditTokenEth);
+    setLPToken(vSPCEth);
+  }
+  
+  const handleConnectClick = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    await connectMetaMask();
+  };
+
+  const handleInputChange = (e: any) => {
+    const { name, value } = e.target;
+    setInputs({
+      ...inputs,
+      [name]: value,
+    });
+  };
+
+  const handleDepositClick = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (inputs.Asset === '') {
+      setIsAssetEmpty(true);
+    } else {
+      setIsAssetEmpty(false);
+      event.preventDefault();
+      await depositTokens(inputs.Asset);
+    }
+  };
+
+  async function depositTokens(amount: string): Promise<void> {
+    try {
+      const amountWei = ethers.parseUnits(amount, 'ether');
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();    
+      const assetToken = new ethers.Contract(spcAddress, SpaceCredit,  signer);
+      const shareToken = new ethers.Contract(vaultAddress, TokenVault, signer);
+
+      await assetToken.approve(vaultAddress, amountWei);
+      await shareToken._deposit(amountWei);
+    } catch(error: any){
+      console.log(error);
+    }
+  }
+
+  const handleWithdrawClick = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (inputs.Share === '') {
+      setIsShareEmpty(true);
+    } else {
+      setIsShareEmpty(false);
+      event.preventDefault();
+      await withdrawTokens(inputs.Share, account);
+    }
+  };
+
+  async function withdrawTokens(shares: string, account: string){
+    try{  
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();    
+      const shareToken = new ethers.Contract(vaultAddress, TokenVault, signer);
+      const amountWei = ethers.parseUnits(shares, 'ether');
+      await shareToken.approve(vaultAddress, amountWei);
+      await shareToken._withdraw(amountWei, account);
+    } catch(error: any){
+      console.log(error);
+    }
+  }
+
+  const testClick = async (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      await testContract();
+  };
+
+  async function testContract(){
+    try{  
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();   
+      const accountAddress = await signer.getAddress();
+
+      const tokenVault = new ethers.Contract(vaultAddress, TokenVault, signer);
+      const assetToken = new ethers.Contract(spcAddress, SpaceCredit,  signer);
+      const xxxToken = new ethers.Contract(xxxAddress, XXXVaultToken,  signer);
+      const wethToken = new ethers.Contract(wethAddress, WETH, signer);
+
+      // ----------------------------------------------------------------------------------- Treasury Function
+      // let {treasury, spcAmount, wethAmount} = await tokenVault.getTreasuryTotalPF();
+      // console.log("Treasury address", treasury);
+      // console.log("Treasury SPC amount", spcAmount);
+      // console.log("Treasury WETH amount", wethAmount);
+
+      // ---------------------------------------------------------------------------------- swap (XXX -> SPC)
+      // const amount = ethers.parseUnits('100', 'ether');
+      // await xxxToken.approve(vaultAddress, amount);
+      // await xxxToken.transfer(vaultAddress, amount);
+      // // Uniswap -> Vault -> User (asset amountOut)
+      // let amountOut = await tokenVault.swapExactToken0ForToken1(xxxAddress, spcAddress, amount, 1);
+
+      // ---------------------------------------------------------------------------------- Withdraw Asset
+      // await tokenVault.withdrawAssetPair(100000);
+      
+      // ---------------------------------------------------------------------------------- Deposit Asset
+      // await assetToken.approve(vaultAddress, 185200000);
+      // await wethToken.approve(vaultAddress, 100000);
+      // await assetToken.transfer(vaultAddress, 185200000);
+      // await wethToken.transfer(vaultAddress, 100000);
+      // await tokenVault.depositAssetPair(185200000, 100000); 
+
+      // --------------------------------------------------------------------------------- SPC - WETH POOL
+      // // User -> Vault (tokenA, tokenB), Approve(Vault Address) -> Transfer
+      // const amount1 = ethers.parseUnits('0.01', 'ether');
+      // const amount2 = ethers.parseUnits('18.52', 'ether');
+      // await wethToken.approve(vaultAddress, amount1);
+      // await assetToken.approve(vaultAddress, amount2);
+      // await wethToken.transfer(vaultAddress, amount1);
+      // await assetToken.transfer(vaultAddress, amount2);
+
+      // // Add liquidity to the pool
+      // let liquidity = await tokenVault.addLiquidityWithERC20(
+      //   wethAddress,
+      //   spcAddress,
+      //   amount1,
+      //   amount2
+      // );
+      // console.log('liquidity ', liquidity);
+
+      // ---------------------------------------------------------------------------------- WETH - XXX POOL
+      // // User -> Vault (tokenA, tokenB), Approve(Vault Address) -> Transfer
+      // const amount1 = ethers.parseUnits('0.01', 'ether');
+      // const amount2 = ethers.parseUnits('18.52', 'ether');
+      // await wethToken.approve(vaultAddress, amount1);
+      // await xxxToken.approve(vaultAddress, amount2);
+      // await wethToken.transfer(vaultAddress, amount1);
+      // await xxxToken.transfer(vaultAddress, amount2);
+
+      // // Add liquidity to the pool
+      // let liquidity = await tokenVault.addLiquidityWithERC20(
+      //   wethAddress,
+      //   xxxAddress,
+      //   amount1,
+      //   amount2
+      // );
+      // console.log('liquidity ', liquidity);
+
+      // ------------------------------------------------------------------------------------ SPC - XXX POOL
+      // // User -> Vault (tokenA, tokenB), Approve(Vault Address) -> Transfer
+      // const amount = ethers.parseUnits('100000', 'ether');
+      // await assetToken.approve(vaultAddress, amount);
+      // await xxxToken.approve(vaultAddress, amount);
+      // await assetToken.transfer(vaultAddress, amount);
+      // await xxxToken.transfer(vaultAddress, amount);
+
+      // // Add liquidity to the pool
+      // let liquidity = await tokenVault.addLiquidityWithERC20(
+      //   spcAddress,
+      //   xxxAddress,
+      //   amount,
+      //   amount
+      // );
+      // console.log('liquidity ', liquidity);
+
+    } catch(error: any){
+      console.log(error);
+    }
+  }
+
+
+
+
+
+  async function depositAssetPair_ (spcAmount: string, wehtAmount: string) {
+    try{
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();   
+      const tokenVault = new ethers.Contract(vaultAddress, TokenVault, signer);
+      const assetToken = new ethers.Contract(spcAddress, SpaceCredit,  signer);
+      const wethToken = new ethers.Contract(wethAddress, WETH, signer);
+
+      // Deposit Asset
+      await assetToken.approve(vaultAddress, spcAmount);
+      await wethToken.approve(vaultAddress, wehtAmount);
+      await assetToken.transfer(vaultAddress, spcAmount);
+      await wethToken.transfer(vaultAddress, wehtAmount);
+      await tokenVault.depositAssetPair(spcAmount, wehtAmount); 
+
+    } catch(error: any) {
+      console.log(error);
+    }
+  }
+
+  async function withdrawAssetPair_ (amountShare: string) {
+    try{
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();   
+      const tokenVault = new ethers.Contract(vaultAddress, TokenVault, signer);
+
+      await tokenVault.withdrawAssetPair(amountShare);
+
+    } catch(error: any) {
+      console.log(error);
+    }
+  }
+
+  async function swapExactToken0ForToken1_ (token0Address:string, token1Address:string, amountIn: string) {
+    try{
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();    
+      const tokenVault = new ethers.Contract(vaultAddress, TokenVault, signer);
+      const assetToken = new ethers.Contract(spcAddress, SpaceCredit,  signer);
+      const xxxToken = new ethers.Contract(xxxAddress, XXXVaultToken,  signer);
+      
+      if (token0Address === spcAddress) {
+        await assetToken.approve(vaultAddress, amountIn);
+        await assetToken.transfer(vaultAddress, amountIn);
+      } else if (token0Address === xxxAddress){
+        await xxxToken.approve(vaultAddress, amountIn);
+        await xxxToken.transfer(vaultAddress, amountIn);
+      }
+      
+      // Uniswap -> Vault -> User (asset amountOut)
+      let amountOut = await tokenVault.swapExactToken0ForToken1(token0Address, token1Address, amountIn, 1);
+      setAmountSwapOut(amountOut);
+
+    } catch(error: any) {
+      console.log(error);
+    }
+  }
+
+  async function getTreasuryTotalPF_ () {
+    try{
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();   
+      const tokenVault = new ethers.Contract(vaultAddress, TokenVault, signer);
+
+      let {treasury, spcAmount, wethAmount} = await tokenVault.getTreasuryTotalPF();
+      setTreasuryInfo({
+        treasuryAddress: treasury,
+        spcAmount: spcAmount,
+        wethAmount: wethAmount
+      });
+
+      console.log("Treasury address", treasury);
+      console.log("Treasury SPC amount", spcAmount);
+      console.log("Treasury WETH amount", wethAmount);
+
+    } catch(error: any) {
+      console.log(error);
+    }
+  }
+  
+  async function autoClaim_ () {
+    try{
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();   
+      const tokenVault = new ethers.Contract(vaultAddress, TokenVault, signer);
+
+      await tokenVault.withdrawAssetPair(500);
+
+    } catch(error: any) {
+      console.log(error);
+    }
+  }
+
+
+  
+
+  return (
+    <>
+      <nav className="flex items-center justify-between flex-wrap bg-blue-600 p-6">
+        <div className="flex items-center flex-shrink-0 text-white mr-6">
+          <svg className="h-7 w-7 mr-2 text-gray-800 dark:text-white"  xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 22 21">
+            <path stroke="currentColor" stroke-linecap="round" stroke-width="2" d="M7.24 7.194a24.16 24.16 0 0 1 3.72-3.062m0 0c3.443-2.277 6.732-2.969 8.24-1.46 2.054 2.053.03 7.407-4.522 11.959-4.552 4.551-9.906 6.576-11.96 4.522C1.223 17.658 1.89 14.412 4.121 11m6.838-6.868c-3.443-2.277-6.732-2.969-8.24-1.46-2.054 2.053-.03 7.407 4.522 11.959m3.718-10.499a24.16 24.16 0 0 1 3.719 3.062M17.798 11c2.23 3.412 2.898 6.658 1.402 8.153-1.502 1.503-4.771.822-8.2-1.433m1-6.808a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"/>
+          </svg>
+          <span className="font-semibold text-3xl tracking-tight">XXX Vault Test Environment</span>
+        
+        {account ? (
+          <p className="absolute right-0 text-2xl pr-5">{account}</p>
+          ) : (
+          <div className='absolute right-0 text-2xl pr-5'>
+            <Button text={'Connect'} buttonClicked={handleConnectClick} />
+          </div>
+        )}
+
+        </div>
+      </nav>
+
+      <p>
+        Timer: {Math.floor(timer / 60).toString().padStart(2, '0')}:
+        {(timer % 60).toString().padStart(2, '0')}
+      </p>
+
+      <div className="flex flex-row">
+        <TabBox
+          className="box-border"
+          handleInputChange={handleInputChange}
+          handleDepositClick={testClick}
+          handleWithdrawClick={handleWithdrawClick}
+          setIsAssetEmpty={setIsAssetEmpty}
+          setIsShareEmpty={setIsShareEmpty}
+          isAssetEmpty={isAssetEmpty}
+          isShareEmpty={isShareEmpty}
+        />
+
+        <SwapBox
+          handleInputChange={handleInputChange}
+          handleDepositClick={handleDepositClick}
+          setIsAssetEmpty={setIsAssetEmpty}
+          isAssetEmpty={isAssetEmpty}
+        />
+
+        <ClaimTimer
+          handleInputChange={handleInputChange}
+          handleDepositClick={handleDepositClick}
+          setIsAssetEmpty={setIsAssetEmpty}
+          isAssetEmpty={isAssetEmpty}
+        />
+
+        {/* <div className="basis-1/2 sm:container sm:mx-auto sm:px-20 my-20">
+          <div className="box-content h-80 w-auto p-8 border-4">
+            <p>
+              <b>XXX Vault :</b>{' '}
+            </p>
+            <br></br>
+            <p>Vault Name : {vaultName}</p>
+            <p>Vault Symbol: {vaultSymbol}</p>
+            <br></br>
+            <p>
+              <b>Your Account :</b>{' '}
+            </p>
+            <br></br>
+            <p>Wallet Address: {account} </p>
+            <p>ETH Balance: {balance} </p>
+            <p>SPC Token: {token} </p>
+            <p>vSPC Token: {lpToken} </p>
+          </div>
+        </div> */}
+      </div>
+    </>
+  );
+}
+
+export default App;
