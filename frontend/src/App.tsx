@@ -1,14 +1,9 @@
 import React from 'react';
 import { useEffect, useState } from 'react';
 import Web3 from 'web3';
-import SpaceCredit from './utils/SpaceCredit.json';
-import TokenVault from './utils/TokenVault.json';
-import WrappedNFTOwner from './utils/WrappedNFTOwner.json';
-import WrappedCollectionNFT from './utils/WrappedCollectionNFT.json';
-import BasicToken from './utils/BasicToken.json';
-import BasicFactory from './utils/BasicFactory.json';
-import WrappedCollectionNFTProxy from './utils/WrappedCollectionNFTProxy.json';
 
+import WrappedCollectionNFT from './utils/WrappedCollectionNFT.json';
+import WrappedCollectionNFTProxy from './utils/WrappedCollectionNFTProxy.json';
 
 import Button from './components/Button';
 import Input from './components/Input';
@@ -38,23 +33,12 @@ function App() {
   const web3 = new Web3(new Web3.providers.HttpProvider('https://eth-sepolia.g.alchemy.com/v2/Z66PxY86kCkFslToB82DiSM531OnIyHS'));
   const _web3 = new Web3(window.ethereum);
   const accountAddress = "0xb2530c5d8496677353166cb4E705093bD800251D";
-  // const spcAddress = "0xD30DFf3480195FEe2D6ae3E6566Ebf06a57aAf35";
-  // const vaultAddress = "0x2658042b7ffCDDD4337c16Cd0a6F15E234Ee0f79";
-  const nftOwnerAddress = '0x9349dEAA573050D2620c0765bE8F60618EB33dD4'; // Polygon mumbai testnet
-  const collectionNFTAddress = '0x9E3396517d3ED080Db158aCEe3f1D2179ec0E7be';
-  const basicFactoryAddress = '0x9721F199bb40129b0Bbcf996363B850cCd160520';// sepolia
-  const basicTokenAddress = '0xCb24cbfa3a9194Ae5dE4c4516DF5623D9b6F27ae'; // sepolia
-  const wrappedNFTProxyAddress = '0x7EF2d37DBEac4351e879da4c2722347f20552b50'; //sepolia
+  
+  const collectionNFTAddress = '0x855694374255cEbbc9081Fd8A10A21010A90E321';
+  const wrappedNFTProxyAddress = '0x5dB505661185964EE717cae86EEC9DD040fCdb0F'; //sepolia
 
-  // // Create an instance of the ERC20 contract
-  // const assetToken: any = new _web3.eth.Contract(SpaceCredit, spcAddress);
-  // const shareToken: any = new _web3.eth.Contract(TokenVault, vaultAddress);
-  // const nftOwner: any = new _web3.eth.Contract(WrappedNFTOwner, nftOwnerAddress);
-  // const collectionNFT: any = new _web3.eth.Contract(WrappedCollectionNFT, collectionNFTAddress);
-  const basicFactory: any =  new _web3.eth.Contract(BasicFactory, basicFactoryAddress);
-  const basicToken: any =  new _web3.eth.Contract(BasicToken, basicTokenAddress);
   const wrappedNFTProxy: any = new _web3.eth.Contract(WrappedCollectionNFTProxy, wrappedNFTProxyAddress);
-
+  
   loadVaultData();
 
   useEffect(() => {
@@ -130,9 +114,19 @@ function App() {
 
       console.log("-----------------okay ----------------------");
 
-      // await basicFactory.methods.createNewToken("Second Token", "STC").send({ from: accountAddress });
+      const _baseURICIDHash = 'QmRMEPHH7FBneAGBwXYrTZ7BmRVRn35h6Tv273EF9DgxdQ';
 
-      await wrappedNFTProxy.methods.createNewCollection("Dog NFT", "DNFT").send({ from: accountAddress });
+      // await wrappedNFTProxy.methods.createNewCollection("Mad Rabbit NFT", "MRNFT", "This is Mad Rabbit NFT", 1000000, 20000, 5).send({ from: accountAddress });
+      
+      // const collectionAddress = await wrappedNFTProxy.methods.getCurrentCollection().call();
+      // console.log("----------- current collection address ----------", collectionAddress);
+      // await wrappedNFTProxy.methods.mintNFTForSequential(accountAddress, collectionAddress, 5).send({ from: accountAddress });
+
+
+      await wrappedNFTProxy.methods.createCollectionNFT("Pet NFT", "PNFT", "This is Pet NFT", 30000, 15000, 3, accountAddress).send({ from: accountAddress });
+
+      // await wrappedNFTProxy.createNewCollection("Dog NFT", "DNFT").send({ from: accountAddress });
+      // console.log("\tdog collection nft created at ", await wrappedNFTProxy.methods.getCollection().call());
 
       // await nftOwner.methods.mintCollection("My NFT", "MNFT", '100').send({ from: accountAddress }); // collection token id
 
@@ -169,6 +163,9 @@ function App() {
       // const receiver_ = accountAddress;
       
       // await nftOwner.methods.mintCollectionAndNFT('Second Collection', 'SecondNFT', accountAddress, '91', '1').send({ from: accountAddress }); // collection id 91, ntf token id 1
+      await wrappedNFTProxy.methods.mintNFTWithCollection(await wrappedNFTProxy.methods.getCollection().call(), 0).send({ from: accountAddress });
+      await wrappedNFTProxy.methods.mintNFTWithCollection(await wrappedNFTProxy.methods.getCollection().call(), 1).send({ from: accountAddress });
+      await wrappedNFTProxy.methods.mintNFTWithCollection(await wrappedNFTProxy.methods.getCollection().call(), 2).send({ from: accountAddress });
 
       //await shareToken.methods.approve(accountAddress, amountWei).send({ from: accountAddress });
       // await shareToken.methods.approve(vaultAddress, amountWei).send({ from: accountAddress });

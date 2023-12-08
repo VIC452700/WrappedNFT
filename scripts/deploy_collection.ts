@@ -4,7 +4,6 @@ async function main() {
   const [owner] = await ethers.getSigners();
   console.log(await owner.getAddress());
 
-  // ---------- Ethereum Token SPC -----------------------------------------
   const WrappedCollectionNFT = await ethers.getContractFactory("WrappedCollectionNFT");
   const collection = await WrappedCollectionNFT.deploy("WrappedNFT", "WRAPNFT");
   console.log('WrappedCollectionNFT Contract deployed at:', await collection.getAddress());

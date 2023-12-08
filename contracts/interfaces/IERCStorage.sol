@@ -36,10 +36,10 @@ www.WrappedPlatform.com
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
  */
 
-/// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.18;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.10;
 
-interface IN2M_ERCStorage {
+interface IERCStorage {
     /// @notice This event is emitted when a token is minted using an affiliate
     /// @param affiliate The affiliate address
     event AffiliateSell(address indexed affiliate);
@@ -158,9 +158,15 @@ interface IN2M_ERCStorage {
     /// @notice Operator address is filtered
     error AddressFiltered(address filtered);
 
-    struct RandomTicket {
-        uint256 amount;
-        uint256 blockNumberToReveal;
+    struct TokenInfo {
+        string tokenName;
+        string tokenSymbol;
+        string description;
+    }
+
+    struct NFTPrice {
+        uint256 collectionPrice;
+        uint256 mintPrice;
     }
 
     struct RevenueAddress {
@@ -195,9 +201,4 @@ interface IN2M_ERCStorage {
         DISABLED_NOT_INITIALIZED,
         DISABLED_EXISTS          
     }
-
-    /// @notice Returns true if the metadata is fixed and immutable. If the metadata hasn't been fixed yet it will return false. Once fixed, it can't be changed by anyone.
-    function isMetadataFixed() external view returns (bool);
-
 }
-

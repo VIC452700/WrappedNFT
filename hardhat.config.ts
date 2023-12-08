@@ -13,50 +13,43 @@ module.exports = {
     sepolia: {
       url: process.env.SEPOLIA_RPC,
       chainId: 11155111,
-      gasPrice: 20000000000,
       accounts: [process.env.PRIVATE_KEY!]
     },
     goerli: {
       url: process.env.GOERLI_RPC,
       chainId: 5,
-      gasPrice: 20000000000,
       accounts: [process.env.PRIVATE_KEY!]
     },
     eth_mainnet: {
       url: process.env.ETH_MAINNET_RPC,
       chainId: 1,
-      gasPrice: 20000000000,
       accounts: [process.env.PRIVATE_KEY!]
     },
     bsc_testnet: {
       url: process.env.BSC_RPC,
       chainId: 97,
-      gasPrice: 20000000000,
       accounts: [process.env.PRIVATE_KEY!]
     },
     bsc_mainnet: {
       url: process.env.BSC_MAINNET_RPC,
       chainId: 56,
-      gasPrice: 20000000000,
       accounts: [process.env.PRIVATE_KEY!]
     },
     testnet: {
       url: process.env.MUMBAI_RPC,
       chainId: 80001,
-      gasPrice: 20000000000,
       accounts: [process.env.PRIVATE_KEY!]
     },
     mainnet: {
       url: process.env.POLYGON_MAINNET_RPC,
       chainId: 137,
-      gasPrice: 20000000000,
       accounts: [process.env.PRIVATE_KEY!]
     }
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
+    // apiKey: process.env.ETHERSCAN_API_KEY,
     // apiKey: process.env.BSCSCAN_API_KEY,
-    // apiKey: process.env.POLYGON_API_KEY,
+    apiKey: process.env.POLYGON_API_KEY,
   },
   solidity: {
     compilers: [
