@@ -1,13 +1,15 @@
 import React from 'react';
 import { useEffect, useState } from 'react';
-import Web3 from 'web3';
+import { ethers } from 'ethers';
 
+import WRAP from './utils/WRAP.json';
 import WrappedCollectionNFT from './utils/WrappedCollectionNFT.json';
 import WrappedCollectionNFTProxy from './utils/WrappedCollectionNFTProxy.json';
 
 import Button from './components/Button';
 import Input from './components/Input';
 import './App.css';
+import { accountSchema } from 'web3/lib/commonjs/eth.exports';
 
 declare let window: any;
 
@@ -29,25 +31,27 @@ function App() {
   const [vaultSymbol, setVaultSymbol] = useState('');
   const [totalAssets, setTotalAssets] = useState('');
 
-  // Create a new Web3 instance
-  const web3 = new Web3(new Web3.providers.HttpProvider('https://eth-sepolia.g.alchemy.com/v2/Z66PxY86kCkFslToB82DiSM531OnIyHS'));
-  const _web3 = new Web3(window.ethereum);
-  const accountAddress = "0xb2530c5d8496677353166cb4E705093bD800251D";
-  
-  const collectionNFTAddress = '0x855694374255cEbbc9081Fd8A10A21010A90E321';
-  const wrappedNFTProxyAddress = '0x5dB505661185964EE717cae86EEC9DD040fCdb0F'; //sepolia
+  const [status, setStatus] = useState('0');
 
-  const wrappedNFTProxy: any = new _web3.eth.Contract(WrappedCollectionNFTProxy, wrappedNFTProxyAddress);
+  // ----------- mumbai ------------------
+  // const collectionNFTAddress = "0x9dEb94F880293F565AA4d70a80c6D02AAdf77867";
+  // const wrapAddress  = "0xE85c3A4C40eb47C973f3eddC18AeB97eE47d8006";
+  // const wrappedNFTProxyAddress = "0xf301714822A7f88907e2762c40034e5d3e5dE1F3";
   
-  loadVaultData();
+  // ---------- sepolia -----------------
+  const wrapAddress  = "0xa0F9d6bDf6103619360Bb3411954B638678e6309";
+  const wrapCollectionNFTAddress = "0x36995AbceB726140a70ef14f2d810cc254B85457"
+  const wrappedNFTProxyAddress = "0x6cb1914dfb95b30DCB020A369E3Cada67FAE837a";
 
   useEffect(() => {
     if (window.ethereum) {
       if (window.ethereum._state.isUnlocked) {
         setIsConnected(true);
-        connectMetaMask();
+        console.log("useeffect true");
       } else {
         setIsConnected(false);
+        window.alert("Please connect your Metamask wallet!");
+        return;
       }
     } else {
       window.alert('Please install MetaMask');
@@ -55,44 +59,50 @@ function App() {
     }
   }, [isConnected]);
 
+  useEffect(() => {
+    if (status == 'start') {
+      apprvoeWRAP();
+    }
+    else if (status == '1') {
+      createCollection();
+    }
+    else if (status == '2') {
+      console.log("OK---------------------------");
+      setStatus("0");
+    }
+  }, [status]);
+
   async function connectMetaMask(): Promise<void> {
-    await window.ethereum.request({ method: 'eth_requestAccounts' });
+    //const provider = new ethers.AlchemyProvider('https://eth-sepolia.g.alchemy.com/v2/Z66PxY86kCkFslToB82DiSM531OnIyHS');
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();    
+    const accountAddress = await signer.getAddress();
 
-    const walletAccount: any = await _web3.eth.getAccounts();
-    console.log("Wallet address: ",walletAccount[0]);
-    
-    // Get balance of ETH
-    const balanceWei: any = await _web3.eth.getBalance(walletAccount[0]);
-    const balanceEth: any = _web3.utils.fromWei(balanceWei, 'ether');
-    
+    // const collectionNFT = new ethers.Contract(collectionNFTAddress, WrappedCollectionNFT,  signer);
+    // const proxyContract = new ethers.Contract(wrappedNFTProxyAddress, WrappedCollectionNFTProxy,  signer);
+    // const wrapToken = new ethers.Contract(wrapAddress, WRAP, signer);
+
+    // let vaultName = await shareToken.getVaultName();
+    // let vaultSymbol = await shareToken.getVaultSymbol();
+
+    // // Get balance of ETH
+    const balanceWei = await provider.getBalance(accountAddress);
+    const balanceEth = ethers.formatEther(balanceWei);
     // // Get balance of SPC token
-    // let SpaceCreditTokenWei = await assetToken.methods.balanceOf(walletAccount[0]).call();
-    // let SpaceCreditTokenEth: string = _web3.utils.fromWei(SpaceCreditTokenWei, 'ether');
-    
+    // let SpaceCreditTokenWei = await assetToken.balanceOf(accountAddress);
+    // let SpaceCreditTokenEth = ethers.formatEther(SpaceCreditTokenWei);
     // // Get balance of vSPC token
-    // let vSPCWei = await shareToken.methods.balanceOf(walletAccount[0]).call();
-    // let vSPCEth = _web3.utils.fromWei(vSPCWei, 'ether');
+    // let vSPCWei = await shareToken.balanceOf(accountAddress);
+    // let vSPCEth = ethers.formatEther(vSPCWei);
 
-    setAccount(walletAccount[0]);
+    // setVaultName(vaultName);
+    // setVaultSymbol(vaultSymbol);
+    setAccount(accountAddress);
     setBalance(balanceEth);
     // setToken(SpaceCreditTokenEth);
     // setLPToken(vSPCEth);
   }
 
-  async function loadVaultData() {
-    try{
-      // let vaultName = await shareToken.methods.getVaultName().call();
-      // let vaultSymbol = await shareToken.methods.getVaultSymbol().call();
-      // let totalAssets = await shareToken.methods.totalAssets().call();
-      
-      // setVaultName(vaultName);
-      // setVaultSymbol(vaultSymbol);
-      // setTotalAssets(totalAssets);
-    } catch(error: any){
-      console.log(error);
-    }
-  }
-  
   const handleConnectClick = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     await connectMetaMask();
@@ -103,41 +113,415 @@ function App() {
       setIsAssetEmpty(true);
     } else {
       setIsAssetEmpty(false);
+
       event.preventDefault();
-      await depositTokens(inputs.Asset);
+
+      if(status == '0'){
+        setStatus("start");
+      }
+      
+      // await depositTokens(inputs.Asset);
     }
   };
 
   async function depositTokens(amount: string): Promise<void> {
     try {
-      const amountWei = _web3.utils.toWei(amount, 'Gwei');
-
       console.log("-----------------okay ----------------------");
 
-      const _baseURICIDHash = 'QmRMEPHH7FBneAGBwXYrTZ7BmRVRn35h6Tv273EF9DgxdQ';
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();    
+      const accountAddress = await signer.getAddress();
 
-      // await wrappedNFTProxy.methods.createNewCollection("Mad Rabbit NFT", "MRNFT", "This is Mad Rabbit NFT", 1000000, 20000, 5).send({ from: accountAddress });
+      const collectionNFT = new ethers.Contract(wrapCollectionNFTAddress, WrappedCollectionNFT,  signer);
+      const wrappedNFTProxy = new ethers.Contract(wrappedNFTProxyAddress, WrappedCollectionNFTProxy,  signer);
+      const wrapToken = new ethers.Contract(wrapAddress, WRAP, signer);
+
+      // -------------------------------------- create collection -------------------------------
+      const tokenName = 'Airplane NFT';
+      const tokenSymbol = 'AIRNFT';
+      const description = 'This is Airplane NFT';
+      const baseURICIDHash = 'ipfs://QmWV24rL61SVoTxtxiJhHcy29T7TCaF61kNCf8FgsF8Cgi';
+      const placeholderImageCIDHash = '';
+
+      const __collectionPrice = '0.5';
+      const _collectionPrice = ethers.parseUnits(__collectionPrice, 'ether');
+      const collectionPrice = Number(_collectionPrice).toString();
+      const __mintPrice = '0.01';
+      const _mintPrice = ethers.parseUnits(__mintPrice, 'ether');
+      const mintPrice = Number(_mintPrice).toString();
+      const royaltyFee = '500';
+
+      const collectionFeeAddress = '0xA9aE05943539DCb601d343aF9193Df17be0348E3';
+      const mintFeeAddress = '0x9Bc62869Ad9E43d03e97b033D4991ab6f1a9B784';
+      const ownerAddress = accountAddress;
+
+        const feeAddresses: string[] = [collectionFeeAddress, mintFeeAddress, ownerAddress];
+        
+        const tokenInfo: string[] = [tokenName, tokenSymbol, description, baseURICIDHash, placeholderImageCIDHash];
+        const nftPrice: string[] = [collectionPrice, mintPrice, royaltyFee];
+        const totalSupply = '10';
+        const mintingType = 1; // Sequential, random, specify
+        const revenueAddresses = [
+            { to: '0xA9aE05943539DCb601d343aF9193Df17be0348E3', percentage: 50 },
+            { to: '0xb2530c5d8496677353166cb4E705093bD800251D', percentage: 30 },
+            { to: '0x9Bc62869Ad9E43d03e97b033D4991ab6f1a9B784', percentage: 15 }
+        ];
+        const soulboundCollection = false;
+
+        console.log("\towner wrap token balance ", await wrapToken.balanceOf(accountAddress));
+        const transaction = await wrapToken.approve(await wrappedNFTProxy.getAddress(), collectionPrice);
+
+        transaction.wait().then((receipt: { hash: any; blockNumber: any; }) => {
+          wrappedNFTProxy.createNewCollection(tokenInfo, nftPrice, totalSupply, mintingType, revenueAddresses, soulboundCollection, feeAddresses).then((receipt: { hash: any; blockNumber: any; }) => {
+              console.log("Transaction hash: ", receipt.hash);
+              console.log("\tBlock number: ", receipt.blockNumber);
+            }).catch((error: any) => {
+              console.log(error);
+          });
+
+          }).catch((error: any) => {
+            console.log(error);
+        });
+
       
-      // const collectionAddress = await wrappedNFTProxy.methods.getCurrentCollection().call();
-      // console.log("----------- current collection address ----------", collectionAddress);
-      // await wrappedNFTProxy.methods.mintNFTForSequential(accountAddress, collectionAddress, 5).send({ from: accountAddress });
+      // ------------------------------------------- mint nft ----------------------------------------------------
+      // const collectionAddress = await wrappedNFTProxy.getCollectionContractAddress(); 
+      // console.log("\tcollection contract address ", collectionAddress);
+
+      // // check the sales phase 
+      // const _salesPhase = await wrappedNFTProxy.getSalePhase(collectionAddress);
+      //   const currentPhase = Number(_salesPhase).toString();
+      //   switch (currentPhase) {
+      //       case '0': {
+      //           console.log("\tCurrent phase CLOSED");
+      //           break;
+      //       }
+      //       case '1': {
+      //           console.log("\tCurrent phase PRESALE");
+      //           break;
+      //       }
+      //       case '2': {
+      //           console.log("\tCurrent phase PUBLIC");
+      //           break;
+      //       }
+      //       case '3': {
+      //           console.log("\tCurrent phase DROP_DATE");
+      //           break;
+      //       }
+      //       case '4': {
+      //           console.log("\tCurrent phase DROP_AND_END_DATE");
+      //           break;
+      //       }
+      //       default: break;
+      //   }
+
+      //  if (currentPhase == '0') console.log("mint disabled, please go on mint setting page and update saled phase!");
+        // const newPhase = 2; // Public (Open)
+        // await wrappedNFTProxy.setSalePhase(collectionAddress, newPhase);
+
+        // Mint sequential - collectionAddress, address to, mint amount (<totalSupply)        
+        // const tx = await wrappedNFTProxy.mintNFTForSequential(collectionAddress, account, '3', { // 0xfE672A2659f59e21177bD6975D5960EeaD390cE3
+        //     value: ethers.parseEther("0.03"),
+        // });
+        // await tx.wait();
+        // console.log("\tmint sequential success!");
+
+        // const newOwner = '0x9Bc62869Ad9E43d03e97b033D4991ab6f1a9B784';
+        // await collectionNFT.approve(newOwner, '0');
+        // await collectionNFT.transferCollectionOwnership(newOwner);
+        // console.log("\tupdated collection owner address ", await wrappedNFTProxy.getOwnerAddress(collectionAddress));
+        // console.log("\taccount address ", accountAddress);
+        // const _date = await wrappedNFTProxy.getCreatedDate(collectionAddress);
+        // const _createdDate = Number(_date);
+        // const date = new Date(_createdDate * 1000); // convert to milliseconds
+        // const createDate = date.toLocaleString(); // convert to local date and time string
+        // console.log("\tcontract create date ", createDate); // output: "12/7/2021, 12:00:00 AM"
+
+        // console.log("\tcontract version ", await wrappedNFTProxy.getContractVersion(collectionAddress));
+        // // minting type ... 
+        // const _mintingType = await wrappedNFTProxy.getMintingType(collectionAddress);
+        // const type = Number(_mintingType).toString();
+        // switch (type) {
+        //     case '0': {
+        //         console.log("\tMinting type SEQUENTIAL");
+        //         break;
+        //     }
+        //     case '1': {
+        //         console.log("\tMinting type RANDOM");
+        //         break;
+        //     }
+        //     case '2': {
+        //         console.log("\tMinting type SPECIFY");
+        //         break;
+        //     }
+        //     case '3': {
+        //         console.log("\tMinting type CUSTOM_URI");
+        //         break;
+        //     }
+        //     default: break;
+        // }
+        // console.log("\tNFT standard ERC-721");
+
+        // const _salesPhase = await wrappedNFTProxy.getSalePhase(collectionAddress);
+        // const currentPhase = Number(_salesPhase).toString();
+        // switch (currentPhase) {
+        //     case '0': {
+        //         console.log("\tCurrent phase CLOSED");
+        //         break;
+        //     }
+        //     case '1': {
+        //         console.log("\tCurrent phase PRESALE");
+        //         break;
+        //     }
+        //     case '2': {
+        //         console.log("\tCurrent phase PUBLIC");
+        //         break;
+        //     }
+        //     case '3': {
+        //         console.log("\tCurrent phase DROP_DATE");
+        //         break;
+        //     }
+        //     case '4': {
+        //         console.log("\tCurrent phase DROP_AND_END_DATE");
+        //         break;
+        //     }
+        //     default: break;
+        // }
+
+        // const _mintFee = await wrappedNFTProxy.getMintFee(collectionAddress);
+        // const mintFee = ethers.formatEther(_mintFee);
+        // console.log("\tmint fee ", mintFee);
+
+        // const isFixed = await wrappedNFTProxy.isMetadataFixed(collectionAddress);
+        // if(isFixed) {
+        //     console.log("\tMetadata Fixed Fixed");
+        // } else {
+        //     console.log("\tMetadata Fixed Not fixed");
+        // }
+
+        // console.log("\tTotal supply ", await wrappedNFTProxy.getCollectionSize(collectionAddress));
+        // console.log("\tMinted NFT ", await wrappedNFTProxy.getMintedAmount(collectionAddress));
+        // console.log("\tNFTs left ", await wrappedNFTProxy.getLeftAmount(collectionAddress));
+        // console.log("\tWithdraw current balance ", await wrappedNFTProxy.getWithdrawBalance(collectionAddress));
+        // console.log("\tWithdrawn amount ", await wrappedNFTProxy.getWithdrawnAmount(collectionAddress));
+        
+        // const _royalty = await wrappedNFTProxy.getRoyaltyFee(collectionAddress);
+        // const royalty = Number(_royalty) / 100;
+        // console.log("\tResale Royalty ", royalty, "%");
+
+        // console.log("\tCollection owner address ", await wrappedNFTProxy.getOwnerAddress(collectionAddress));
+        // affiliates commision 
+        // affiliates users discount 
+
+        
+        
+        // ------------------------------------------------- mint setting --------------------------
+        // const __newMintPrice = '0.3';
+        // const _newMintPrice = ethers.parseUnits(__newMintPrice, 'ether');
+        // const newMintPrice = Number(_newMintPrice).toString();
+        // await wrappedNFTProxy.setMintFee(collectionAddress, newMintPrice);
+        // const _newMintFee = await wrappedNFTProxy.getMintFee(collectionAddress);
+        // const newMintFee = ethers.formatEther(_newMintFee);
+        // console.log("\tupdated mint fee ", newMintFee);
+
+      //   const maxPerAddress = '3';
+      //   await wrappedNFTProxy.setMaxPerAddress(collectionAddress, maxPerAddress);
+      //   console.log("\tMax per address ", await wrappedNFTProxy.getMaxPerAddress(collectionAddress));
+
+      //   const newPhase = 2; // Public (Open)
+      //   await wrappedNFTProxy.setSalePhase(collectionAddress, newPhase);
+      //   const _newSalesPhase = await wrappedNFTProxy.getSalePhase(collectionAddress);
+      //   const newSalesPhase = Number(_newSalesPhase).toString();
+      //   switch (newSalesPhase) {
+      //       case '0': {
+      //           console.log("\tCurrent phase CLOSED");
+      //           break;
+      //       }
+      //       case '1': {
+      //           console.log("\tCurrent phase PRESALE");
+      //           break;
+      //       }
+      //       case '2': {
+      //           console.log("\tCurrent phase PUBLIC");
+      //           break;
+      //       }
+      //       case '3': {
+      //           console.log("\tCurrent phase DROP_DATE");
+      //           break;
+      //       }
+      //       case '4': {
+      //           console.log("\tCurrent phase DROP_AND_END_DATE");
+      //           break;
+      //       }
+      //       default: break;
+      //   }
+
+      //   const year = 2023;
+      //   const month = 11; // Note: JavaScript months are zero-based (0 = January, 1 = February, etc.)
+      //   const day = 1;
+      //   const hour = 10;
+      //   const minute = 9;
+      //   const second = 5;
+      //   const dropDate = Date.UTC(year, month, day, hour - 9, minute, second); // current timezone GMT + 9, that's UTC timezone (-9)
+      //   const endDate = Date.UTC(year + 1, month, day, hour - 9, minute, second + 1); // current timezone GMT + 9, that's UTC timezone (-9)
+      //   const _dropDate = new Date(dropDate);
+      //   const __dropDate = _dropDate.toLocaleString();  
+      //   console.log("\tinput drop date ", __dropDate);
+
+      //   const dropDateInput = dropDate/1000; // convert milliseconds to seconds (UNIX -> Solidity)
+      //   const endDateInput = endDate/1000;
+      //   await wrappedNFTProxy.setDropDate(collectionAddress, dropDateInput.toString());
+      //   console.log("\tDrop date ", await wrappedNFTProxy.getDropDate(collectionAddress));
+      //   await wrappedNFTProxy.setDropAndEndDate(collectionAddress, dropDateInput, endDateInput);
+      //   console.log("\tDrop and End date(drop date) ", await wrappedNFTProxy.getDropDate(collectionAddress));
+      //   console.log("\tDrop and End date(end date) ", await wrappedNFTProxy.getEndDate(collectionAddress));
+
+        // Mint sequential - collectionAddress, to, mint amount( < totalSupply )
+        // await wrappedNFTProxy.mintNFTForSequential(collectionAddress, accountAddress, '1');
+
+        // const tx = await wrappedNFTProxy.sendTransaction({
+        //   to: wrappedNFTProxyAddress,
+        //   value: ethers.parseEther("0.1"),
+        // });
+        
+        // await tx.wait();
+        // console.log("Transaction successful!");
+
+        // const __newMintPrice = '0.3';
+        // const _newMintPrice = ethers.parseUnits(__newMintPrice, 'ether');
+        // const newMintPrice = Number(_newMintPrice).toString();
+        // await wrappedNFTProxy.setMintFee(collectionAddress, newMintPrice);
+
+        // const _newMintFee = await wrappedNFTProxy.getMintFee(collectionAddress);
+        // const newMintFee = ethers.formatEther(_newMintFee);
+        // console.log("\tupdated mint fee ", newMintFee);
 
 
-      await wrappedNFTProxy.methods.createCollectionNFT("Pet NFT", "PNFT", "This is Pet NFT", 30000, 15000, 3, accountAddress).send({ from: accountAddress });
 
-      // await wrappedNFTProxy.createNewCollection("Dog NFT", "DNFT").send({ from: accountAddress });
-      // console.log("\tdog collection nft created at ", await wrappedNFTProxy.methods.getCollection().call());
 
-      // await nftOwner.methods.mintCollection("My NFT", "MNFT", '100').send({ from: accountAddress }); // collection token id
+        // const newPhase = 2; // Public (Open)
+        // await wrappedNFTProxy.setSalePhase(collectionAddress, newPhase);
+        // const _newSalesPhase = await wrappedNFTProxy.getSalePhase(collectionAddress);
 
-      // await nftOwner.methods.mintNFTForCollection('0x504d4c2B369024fD5cD8973EDd151e3d655A3eB7', accountAddress, '1').send({ from: accountAddress }); // collection address, ntf token id
+        // // Mint sequential - collectionAddress, address to, mint amount (<totalSupply)        
+        // const tx = await wrappedNFTProxy.mintNFTForSequential(collectionAddress, accountAddress, '3', {
+        //     value: ethers.parseEther("0.3"),
+        // });
+        // await tx.wait();
+        // console.log("\tmint sequential success!");
 
-      // await assetToken.methods.approve(vaultAddress, amountWei).send({ from: accountAddress });
-      // await shareToken.methods._deposit(amountWei).send({ from: accountAddress });
+        // const withdrawBalance = await wrappedNFTProxy.getWithdrawBalance(collectionAddress);
+        // console.log("\tWithdraw current balance ", ethers.formatEther(withdrawBalance));
+
+
+        // ---------------------------- withdraw --------------------------------
+         // Withdraw current balance 
+        //  await wrappedNFTProxy.withdraw(collectionAddress, accountAddress);
+ 
+        //  const withdrawnAmount = await wrappedNFTProxy.getWithdrawnAmount(collectionAddress);
+        //  console.log("\twithdrawn amount ", ethers.formatEther(withdrawnAmount));
+
+        //  const withdrawBalance1 = await wrappedNFTProxy.getWithdrawBalance(collectionAddress);
+        //  console.log("\tWithdraw updated balance ", ethers.formatEther(withdrawBalance1));
+
     } catch(error: any){
       console.log(error);
     }
   }
+
+  const apprvoeWRAP = async () => {
+    try{
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();    
+      const accountAddress = await signer.getAddress();
+
+      const wrappedNFTProxy = new ethers.Contract(wrappedNFTProxyAddress, WrappedCollectionNFTProxy,  signer);
+      const wrapToken = new ethers.Contract(wrapAddress, WRAP, signer);
+
+
+      const __collectionPrice = '0.5';
+      const _collectionPrice = ethers.parseUnits(__collectionPrice, 'ether');
+      const collectionPrice = Number(_collectionPrice).toString();
+
+      console.log("\towner wrap token balance ", await wrapToken.balanceOf(accountAddress));
+      const tx = await wrapToken.approve(await wrappedNFTProxy.getAddress(), collectionPrice);
+
+      tx.wait().then((receipt: { hash: any; blockNumber: any; }) => {
+        
+        if (receipt.blockNumber != null) {
+          setStatus('1');
+        }
+      
+      }).catch((error: any) => {
+        console.log(error);
+        setStatus("0");
+      }); 
+
+    }
+    catch(error: any){
+      console.log(error);
+      setStatus("0");
+    }
+  };
+
+  const createCollection = async () => {
+    try {
+      console.log("-----------------okay ----------------------");
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();    
+      const accountAddress = await signer.getAddress();
+
+      const wrappedNFTProxy = new ethers.Contract(wrappedNFTProxyAddress, WrappedCollectionNFTProxy,  signer);
+
+      // -------------------------------------- create collection -------------------------------
+      const tokenName = 'Airplane NFT';
+      const tokenSymbol = 'AIRNFT';
+      const description = 'This is Airplane NFT';
+      const baseURICIDHash = 'ipfs://QmWV24rL61SVoTxtxiJhHcy29T7TCaF61kNCf8FgsF8Cgi';
+      const placeholderImageCIDHash = '';
+
+      const __collectionPrice = '0.5';
+      const _collectionPrice = ethers.parseUnits(__collectionPrice, 'ether');
+      const collectionPrice = Number(_collectionPrice).toString();
+      const __mintPrice = '0.01';
+      const _mintPrice = ethers.parseUnits(__mintPrice, 'ether');
+      const mintPrice = Number(_mintPrice).toString();
+      const royaltyFee = '500';
+
+      const collectionFeeAddress = '0xA9aE05943539DCb601d343aF9193Df17be0348E3';
+      const mintFeeAddress = '0x9Bc62869Ad9E43d03e97b033D4991ab6f1a9B784';
+      const ownerAddress = accountAddress;
+
+        const feeAddresses: string[] = [collectionFeeAddress, mintFeeAddress, ownerAddress];
+        
+        const tokenInfo: string[] = [tokenName, tokenSymbol, description, baseURICIDHash, placeholderImageCIDHash];
+        const nftPrice: string[] = [collectionPrice, mintPrice, royaltyFee];
+        const totalSupply = '10';
+        const mintingType = 1; // Sequential, random, specify
+        const revenueAddresses = [
+            { to: '0xA9aE05943539DCb601d343aF9193Df17be0348E3', percentage: 50 },
+            { to: '0xb2530c5d8496677353166cb4E705093bD800251D', percentage: 30 },
+            { to: '0x9Bc62869Ad9E43d03e97b033D4991ab6f1a9B784', percentage: 15 }
+        ];
+        const soulboundCollection = false;
+
+        const tx = await wrappedNFTProxy.createNewCollection(tokenInfo, nftPrice, totalSupply, mintingType, revenueAddresses, soulboundCollection, feeAddresses);
+        tx.wait().then((receipt: { hash: any; blockNumber: any; }) => {
+          if (receipt.blockNumber != null) {
+            setStatus('2');
+          }
+        
+        }).catch((error: any) => {
+          console.log(error);
+          setStatus("0");
+        }); 
+
+    } catch(error: any){
+      console.log(error);
+      setStatus("0");
+    }
+  };
   
   const handleWithdrawClick = async (event: React.MouseEvent<HTMLButtonElement>) => {
     if (inputs.Share === '') {
@@ -145,31 +529,90 @@ function App() {
     } else {
       setIsShareEmpty(false);
       event.preventDefault();
-      await withdrawTokens(inputs.Share, accountAddress);
+      await withdrawTokens(inputs.Share, account);
     }
   };
 
   async function withdrawTokens(shares: string, receiver: any){
-    try{
-      // const amountWei = _web3.utils.toWei(shares, 'Gwei');
-      // console.log("amount : ", amountWei);
-      console.log("receiver : ", receiver);
+    try{     
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();    
+      const accountAddress = await signer.getAddress();
+
+      const wrappedNFTProxy = new ethers.Contract(wrappedNFTProxyAddress, WrappedCollectionNFTProxy,  signer);
+      const collectionAddress = await wrappedNFTProxy.getCollectionContractAddress();
+
+
+       const __newMintPrice = '0.3';
+        const _newMintPrice = ethers.parseUnits(__newMintPrice, 'ether');
+        const newMintPrice = Number(_newMintPrice).toString();
+        await wrappedNFTProxy.setMintFee(collectionAddress, newMintPrice);
+        const _newMintFee = await wrappedNFTProxy.getMintFee(collectionAddress);
+        const newMintFee = ethers.formatEther(_newMintFee);
+        console.log("\tupdated mint fee ", newMintFee);
       
-      // const receiver_ = await window.ethereum.request({
-      //   method:"eth_requestAccounts",
+      
+
+      // const collectionNFT = new ethers.Contract(wrapCollectionNFTAddress, WrappedCollectionNFT,  signer);
+      // const wrappedNFTProxy = new ethers.Contract(wrappedNFTProxyAddress, WrappedCollectionNFTProxy,  signer);
+      // const wrap = new ethers.Contract(wrapAddress, WRAP, signer);
+
+      // const tokenName1 = 'Airplane NFT';
+      //   const tokenSymbol1 = 'AIRNFT';
+      //   const description1 = 'This is Airplane NFT';
+      //   // --------- isTokenMetadataFixed - default: true (false use placeholder URI hash instead of base URI hash) --------------------------
+      //   const isTokenMetadataFixed = true;
+      //   let baseURICIDHash1: any;
+      //   let placeholderImageCIDHash1: any;
+      //   if (isTokenMetadataFixed) { // if isTokenMetadataFixed is true
+      //       baseURICIDHash1 = 'ipfs://QmWV24rL61SVoTxtxiJhHcy29T7TCaF61kNCf8FgsF8Cgi';
+      //       placeholderImageCIDHash1 = '';
+      //   } else { // if isTokenMetadataFixed is false
+      //       baseURICIDHash1 = '';
+      //       placeholderImageCIDHash1 = 'ipfs://QmRbTbbACGk6kVHwvsKetHy4TDRketsHsctLoi6SRSgsyK';
+      //   }
+      //   const __collectionPrice1 = '0.5';
+      //   const _collectionPrice1 = ethers.parseUnits(__collectionPrice1, 'ether');
+      //   const collectionPrice1 = Number(_collectionPrice1).toString();
+      //   const __mintPrice1 = '0';
+      //   const _mintPrice1 = ethers.parseUnits(__mintPrice1, 'ether');
+      //   const mintPrice1 = Number(_mintPrice1).toString();
+      //   const royaltyFee1 = '500';
+      //   const airdropInfo1 = [
+      //       { to: '0xA9aE05943539DCb601d343aF9193Df17be0348E3', amount: 2 },
+      //       { to: '0xb2530c5d8496677353166cb4E705093bD800251D', amount: 1 },
+      //       { to: '0x9Bc62869Ad9E43d03e97b033D4991ab6f1a9B784', amount: 5 }
+      //   ];
+      //   const collectionFeeAddress1 = '0xb2530c5d8496677353166cb4E705093bD800251D';
+      //   const mintFeeAddress1 = '0xA9aE05943539DCb601d343aF9193Df17be0348E3';
+      //   const ownerAddress1 = account;
+        
+      //   // set function parameters
+      //   const tokenInfo1: string[] = [tokenName1, tokenSymbol1, description1, baseURICIDHash1, placeholderImageCIDHash1];
+      //   const nftPrice1: string[] = [collectionPrice1, mintPrice1, royaltyFee1];
+      //   const soulboundCollection1 = false;
+      //   const feeAddresses1: string[] = [collectionFeeAddress1, mintFeeAddress1, ownerAddress1];
+
+      //   console.log("\towner wrap token balance ", await wrap.balanceOf(account));
+      //   const transaction1 = await wrap.approve(await wrappedNFTProxy.getAddress(), collectionPrice1);
+      //   transaction1.wait().then((receipt: { hash: any; blockNumber: any; }) => {
+      //     console.log("\tTransaction hash: ", receipt.hash);
+      //     console.log("\tBlock number: ", receipt.blockNumber);
+
+      //     wrappedNFTProxy.createCollectionMintNFT(tokenInfo1, nftPrice1, airdropInfo1, soulboundCollection1, feeAddresses1).then((receipt: { hash: any; blockNumber: any; }) => {
+      //         console.log("\tTransaction hash: ", receipt.hash);
+      //         console.log("\tBlock number: ", receipt.blockNumber);
+      //       }).catch((error: any) => {
+      //         console.log(error);
+      //     });
+
+      //   }).catch((error: any) => {
+      //     console.log(error);
       // });
 
-      // const shares_ = 3000000000;
-      // const receiver_ = accountAddress;
-      
-      // await nftOwner.methods.mintCollectionAndNFT('Second Collection', 'SecondNFT', accountAddress, '91', '1').send({ from: accountAddress }); // collection id 91, ntf token id 1
-      await wrappedNFTProxy.methods.mintNFTWithCollection(await wrappedNFTProxy.methods.getCollection().call(), 0).send({ from: accountAddress });
-      await wrappedNFTProxy.methods.mintNFTWithCollection(await wrappedNFTProxy.methods.getCollection().call(), 1).send({ from: accountAddress });
-      await wrappedNFTProxy.methods.mintNFTWithCollection(await wrappedNFTProxy.methods.getCollection().call(), 2).send({ from: accountAddress });
-
-      //await shareToken.methods.approve(accountAddress, amountWei).send({ from: accountAddress });
-      // await shareToken.methods.approve(vaultAddress, amountWei).send({ from: accountAddress });
-      // await shareToken.methods._withdraw(amountWei, vaultAddress).send({from : accountAddress});
+        
+      //   const collectionAddress1 = await wrappedNFTProxy.getCollectionContractAddress();
+      //   console.log("\tedition collection contract address ", collectionAddress1);
       
     } catch(error: any){
       console.log(error);

@@ -35,9 +35,8 @@ www.WrappedPlatform.com
                    |_|   |_|                                                             ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
  */
- // SPDX-License-Identifier: Unlicensed
-
-pragma solidity 0.8.19;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
 
 abstract contract Context {
     function _msgSender() internal view virtual returns (address) {
@@ -1131,7 +1130,6 @@ contract WRAP is ERC20, Ownable {
     );
 
     constructor() ERC20("Wrapped Platform", "WRAP") {
-
 
         // uniswapV2Router = IUniswapV2Router02(
         //     0xeeabd314e2eE640B1aca3B27808972B05c7f6A3b

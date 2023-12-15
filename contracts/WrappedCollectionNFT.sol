@@ -35,86 +35,703 @@ www.WrappedPlatform.com
                    |_|   |_|                                                             ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
  */
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.10;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
-import { IERCStorage } from './interfaces/IERCStorage.sol'
+import { IERCStorage } from './interfaces/IERCStorage.sol';
 
 contract WrappedCollectionNFT is Initializable, ERC721Upgradeable, EIP712Upgradeable, IERCStorage {
-    uint256 internal constant PLATFORM_FEE = 5_00;
 
-    string private _description;
-    uint256 private _collectionPrice;
-    uint256 private _mintPrice;
-    uint32 private _collectionSize;
-    RevenueAddress[] private _revenueInfo;
+    address private _owner;
+    address private _proxy;
+    uint256 private _mintPrice; // direcet update part
+    uint256 private _withdrawBalance; 
+    uint256 private _withdrawnAmount; 
+    uint16 private _maxPerAddress; // direct update part
+    uint256 private _dropDateTimestamp; // direct update part
+    uint256 private _endDateTimestamp; // direct update part
+    bool private _isCreatorFeeEnforcemented; // direct update part
+    uint256 internal _pendingTotalAffiliatesBalance; // direct update part
+    uint32 internal _affiliateSales; // direct update part
 
+    address public collectionFeeAddress;
+    address public mintFeeAddress;
+    uint256 public collectionPrice;
+    uint32 public collectionSize;
+    uint256 public royaltyFee; // Max vaule 1000(10.00%)
+    uint256 public createdDate;
+    string public _description;
+    string public _baseURICIDHash;
+    string public _placeholderImageCIDHash;
+    bool public _soulboundCollection;
     
+    RevenueAddress[] private _revenueInfo;
+    AirdropAddress[] private _airdropInfo;
+    // WhitelistAddress[] private _whitelistInfo;
+    MintingType private _mintingType; // direct update part
+    SalePhase private _currentPhase; // direct update part
 
+    mapping(address => uint256[]) internal mintedTokenIds; // minted token id array per address
+    mapping(address => uint256) internal mintedTokenAmount; // minted token amount per address
+    mapping(uint256 => string) internal _tokenURIs;
+    mapping(uint256 => bool) internal _soulbound;
+    mapping(address => AffiliateInformation) internal _affiliatesInfo; // direct update part
+    mapping(address => RandomTicket) internal _randomTickets;
+    mapping(address => uint256) internal _pendingAffiliateBalance;
+    mapping(bytes => uint256) internal _usedAmountSignature;
+
+    modifier onlyOwner() {
+        require(msg.sender == _owner || msg.sender == _proxy, "Only collection owner(collection side) can call this function");
+        _;
+    }
+   
     function initialize(
-        bytes memory tokenInfoEncodeData,
-        bytes memory nftPriceEncodedData,
-        uint32 iTotalSupply,
-        bytes32 baseURICIDHash,
-        bytes32 placeholderImageCIDHash,
-        bytes memory revenueArrayEncodedData
+        string calldata tokenName,
+        string calldata tokenSymbol,
+        string calldata description,
+        bytes memory feeAddressesData,
+        bytes memory nftFeeData,
+        string calldata baseURICIDHash,
+        string calldata placeholderImageCIDHash
     ) external initializer {
-        TokenInfo memory tokenInfo = abi.decode(tokenInfoEncodeData, (TokenInfo));
-        __ERC721_init(tokenInfo.tokenName, tokenInfo.tokenSymbol);
-        _description = tokenInfo.description;
+        __ERC721_init(tokenName, tokenSymbol);
+        _description = description;
 
-        NFTPrice memory nftPrice = abi.decode(nftPriceEncodedData, (NFTPrice));
-        _collectionPrice = nftPrice.collectionPrice;
-        _mintPrice = nftPrice.mintPrice;
+        address[] memory feeAddresses = abi.decode(feeAddressesData, (address[])); // collectionFeeAddress, mintFeeAddress, ownerAddress
+        collectionFeeAddress = feeAddresses[0];
+        mintFeeAddress = feeAddresses[1];
+        _owner = feeAddresses[2];
+        _proxy = msg.sender;
 
+        uint256[] memory nftFee = abi.decode(nftFeeData, (uint256[])); // collectionPrice, _mintPrice, royaltyFee
+        collectionPrice = nftFee[0];
+        _mintPrice = nftFee[1];
+        royaltyFee = nftFee[2];
+
+        if (royaltyFee > 1000) revert RoyaltyFeeTooHigh(); // 10.00%
+        if (bytes(baseURICIDHash).length != 0 && bytes(placeholderImageCIDHash).length != 0) revert CantSetBaseURIAndPlaceholderAtTheSameTime();
+        if (bytes(baseURICIDHash).length == 0) {
+            if (bytes(placeholderImageCIDHash).length == 0) {
+                // if (iMintingType != MintingType.CUSTOM_URI) // default MintingType - SEQUENTIAL
+                    revert NoBaseURINorPlaceholderSet();
+            } else {
+                _placeholderImageCIDHash = placeholderImageCIDHash;
+            }
+        } else {
+            _baseURICIDHash = baseURICIDHash;
+        }
+        
+        createdDate = block.timestamp;
+    }
+
+    function mintInitialize (
+        uint32 iTotalSupply,
+        bytes memory mintingTypeData,
+        bytes memory revenueArrayEncodedData,
+        bool soulboundCollection
+    ) external {
         if (iTotalSupply == 0) revert TotalSupplyMustBeGreaterThanZero();
-        if (baseURICIDHash != 0 && placeholderImageCIDHash != 0) revert CantSetBaseURIAndPlaceholderAtTheSameTime();
-        if (iRoyaltyFee > 50_00) revert RoyaltyFeeTooHigh();
 
-        _collectionSize = iTotalSupply;
+        collectionSize = iTotalSupply;
+        _mintingType = abi.decode(mintingTypeData, (MintingType));
 
         RevenueAddress[] memory revenueAddresses = abi.decode(revenueArrayEncodedData, (RevenueAddress[]));
         if (revenueAddresses.length > 0) {
             uint256 revenuePercentageTotal;
             for (uint256 i; i < revenueAddresses.length; ) {
                 revenuePercentageTotal += revenueAddresses[i].percentage;
-                _revenueInfo.push(revenueAddresses[i]); // new part
+                _revenueInfo.push(revenueAddresses[i]); 
                 unchecked {
                     ++i;
                 }
             }
-            // if (revenuePercentageTotal > 100_00 - PLATFORM_FEE) revert InvalidRevenuePercentage();
+            if (revenuePercentageTotal > 10000) revert InvalidRevenuePercentage();
         }
+
+        _soulboundCollection = soulboundCollection;
+        _isCreatorFeeEnforcemented = true;
     }
 
-    function mint(address to, uint256 tokenId) external {
+    function mint(address to, uint256 tokenId) public onlyOwner {
         _mint(to, tokenId);
+
+        if (tokenId != 0) { // exclude token id 0
+            mintedTokenIds[to].push(tokenId);
+            mintedTokenAmount[to]++;
+        }
+
+        if (isMetadataFixed()) _setTokenURI(tokenId, _baseURICIDHash);
+        else _setTokenURI(tokenId, _placeholderImageCIDHash);
     }
 
-    function burn(uint256 tokenId) external {
+    function burn(uint256 tokenId) public onlyOwner {
         _burn(tokenId);
     }
 
-    function getDescription() public view returns (string memory) {
-        return _description;
+     /// @notice Returns true if the metadata is fixed and immutable. If the metadata hasn't been fixed yet it will return false. Once fixed, it can't be changed by anyone.
+    function isMetadataFixed() public view returns (bool) {
+        return (bytes(_baseURICIDHash).length != 0 || (_mintingType == MintingType.CUSTOM_URI));
+    }
+
+    function _setTokenURI(uint256 tokenId, string memory tokenURI) internal {
+        _tokenURIs[tokenId] = tokenURI;
+    }
+
+    function getTokenURI(uint256 tokenId) public view returns (string memory) {
+        require(_exists(tokenId), "Token id does not exist");
+        string memory tokenURI = _tokenURIs[tokenId];
+        return tokenURI;
+    }
+
+    function getRevenueAddressArray() public view returns (RevenueAddress[] memory) {
+        return _revenueInfo;
+    }
+
+    function getAirdropAddressArray() public view returns (AirdropAddress[] memory) {
+        return _airdropInfo;
+    }
+
+    function getOwnerAddress() public view returns (address) {
+        return _owner;
+    }
+
+    function getContractVersion() public pure returns (uint) {
+        return 1000;
     }
 
     function exists(uint256 tokenId) public view returns (bool) {
         return _ownerOf(tokenId) != address(0);
-        
     }
 
-    function getCollectionPrice() public view returns (uint256) {
-        return _collectionPrice;
+    function getMintedAmount() public view returns (uint32) {
+        uint32 count = 0;
+        for (uint32 i = 1; i <= collectionSize; i++) {
+            if (exists(i)) count++; 
+        }
+        return count;
+    }
+
+    function getLeftAmount() public view returns (uint32) {
+        uint32 mintedNumber = getMintedAmount();
+        return collectionSize - mintedNumber;
+    }
+
+    function setSalePhase(SalePhase salePhase) public onlyOwner { // proxy contract
+        _currentPhase = salePhase;
+    }
+
+    function getSalePhase() public view returns (SalePhase) {
+        return _currentPhase;
+    }
+
+    function getMintingType() public view returns (MintingType) {
+        return _mintingType;
+    }
+
+    function setMintPrice(uint256 newMintPrice) public onlyOwner { // proxy contract
+        _mintPrice = newMintPrice;
     }
 
     function getMintPrice() public view returns (uint256) {
         return _mintPrice;
     }
 
-    function getCollectionSize() public view returns (uint32) {
-        return _collectionSize;
+    function setWithdrawBalance(uint256 amount) public onlyOwner {
+        _withdrawBalance += amount;
+    } 
+
+    function setWithdrawnAmount(uint256 amount) public onlyOwner {
+        _withdrawnAmount += amount;
+        _withdrawBalance -= amount;
+    } 
+
+    function getWithdrawBalance() public view returns (uint256) {
+        return _withdrawBalance;
+    }
+
+    function getWithdrawnAmount() public view returns (uint256) {
+        return _withdrawnAmount;
+    }
+
+    function setMaxPerAddress(uint16 newMaxPerAddress) public onlyOwner { // proxy contract
+        require(newMaxPerAddress <= collectionSize, "Invalid maxPerAddress, Exceed collection size!");
+        _maxPerAddress = newMaxPerAddress;
+    }
+
+    /// @notice Max amount of NFTs to be hold per address.
+    function getMaxPerAddress() public view returns (uint16) {
+        return _maxPerAddress;
+    }
+
+    function getDropDate() public view returns (uint256) {
+        return _dropDateTimestamp;
+    }
+
+    function getEndDate() public view returns (uint256) {
+        return _endDateTimestamp;
+    }
+
+    function setDropDate(uint256 dropDateTimestamp) public onlyOwner {
+        _dropDateTimestamp = dropDateTimestamp;
+    }
+
+    function setDropAndEndDate(uint256 dropDateTimestamp, uint256 endDateTimestamp) public onlyOwner {
+        _dropDateTimestamp = dropDateTimestamp;
+        _endDateTimestamp = endDateTimestamp;
+    }
+
+    function setCreatorFeeEnforcemented(bool _isCreatorFeeEnforced) public onlyOwner {
+        _isCreatorFeeEnforcemented = _isCreatorFeeEnforced;
+    }
+
+    function getCreatorFeeEnforcemented() public view returns (bool) {
+        return _isCreatorFeeEnforcemented;
+    }
+
+    function getMintedTokenIds(address owner) public view returns (uint256[] memory) {
+        return mintedTokenIds[owner];
+    }
+
+    function getMintedTokenAmount(address owner) public view returns (uint256) {
+        return mintedTokenAmount[owner];
+    }
+
+    function revealMetadata(string memory baseURIHash) public onlyOwner {
+        _baseURICIDHash = baseURIHash;
+    }
+
+    function _checkPhase() internal {
+        if (_currentPhase != SalePhase.PUBLIC) {
+            if (_currentPhase == SalePhase.DROP_DATE) {
+                if (block.timestamp >= _dropDateTimestamp) {
+                    _currentPhase = SalePhase.PUBLIC;
+                    delete(_dropDateTimestamp);
+                } else {
+                    revert WaitUntilDropDate();
+                }
+            } else if (_currentPhase == SalePhase.DROP_AND_END_DATE) {
+                if (block.timestamp < _dropDateTimestamp) {
+                    revert WaitUntilDropDate();
+                }
+                if (block.timestamp >= _endDateTimestamp) {
+                    revert SaleFinished();
+                }
+            } else {
+                revert PublicSaleNotOpen();
+            }
+        }
+    }
+
+    function _mintSequential(address to, uint256 amount) internal virtual {
+        uint32 _soldTokens = getMintedAmount();
+        for (uint256 i; i < amount; ) {
+            unchecked {
+                mint(to, ++_soldTokens);
+                ++i;
+            }
+        }
+    }
+
+    function _mintSequential(address to, uint256 amount, bool soulbound) private {
+        uint32 _soldTokens = getMintedAmount();
+        for (uint256 i; i < amount; ) {
+            unchecked {
+                _mint(to, ++_soldTokens);
+
+                if (_soldTokens != 0) { // exclude token id 0
+                    mintedTokenIds[to].push(_soldTokens);
+                    mintedTokenAmount[to]++;
+                }
+            }
+            if (soulbound) _soulbound[_soldTokens] = true;
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    function _mintSequentialWithChecks(address to, uint256 amount) public onlyOwner {
+        _checkPhase();
+        if (_mintingType != MintingType.SEQUENTIAL) revert InvalidMintingType();
+        uint32 _soldTokens = getMintedAmount();
+
+        if ((_soldTokens + amount) > collectionSize) revert CollectionSoldOut();
+        if (_maxPerAddress != 0) {
+            uint256 userMintedAmount = getMintedTokenAmount(to);
+            if ((userMintedAmount + amount) > _maxPerAddress) revert MaxPerAddressExceeded();
+        }
+
+        _mintSequential(to, amount);
+    }
+
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 firstTokenId,
+        uint256 batchSize
+    ) internal override {
+        if (
+            from != address(0) &&
+            (_soulbound[firstTokenId] || _soulboundCollection)
+        ) revert NonTransferrableSoulboundNFT();
+
+        super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
+    }
+
+    function _afterTokenTransfer(
+        address from,
+        address to,
+        uint256 firstTokenId,
+        uint256 batchSize
+    ) internal override {
+        super._afterTokenTransfer(from, to, firstTokenId, batchSize);
+
+        if (_maxPerAddress != 0) {
+            if (balanceOf(to) > _maxPerAddress) revert MaxPerAddressExceeded();
+        }
+    }
+
+    function _randomTokenId(bytes32 seed, uint256 extraModifier) private view returns (uint256 tokenId) {
+        tokenId = (uint256(keccak256(abi.encodePacked(seed, extraModifier))) % collectionSize) + 1;
+        while (_exists(tokenId)) {
+            unchecked {
+                tokenId = (tokenId % collectionSize) + 1;
+            }
+        }
+    }
+
+    function _mintRandom(address to, uint256 amount, bytes32 seed, bool soulbound) private {
+        for (; amount > 0; ) {
+            uint256 tokenId = _randomTokenId(seed, amount);
+            _mint(to, tokenId);
+            
+            if (tokenId != 0) { // exclude token id 0
+                mintedTokenIds[to].push(tokenId);
+                mintedTokenAmount[to]++;
+            }
+
+            if (soulbound) _soulbound[tokenId] = true;
+            unchecked {
+                --amount;
+            }
+        }
+    }
+
+    function _mintRandomWithChecks(address to, uint256 amount) public onlyOwner {
+        _checkPhase();
+        if (_mintingType != MintingType.RANDOM) revert InvalidMintingType();
+        uint32 _soldTokens = getMintedAmount();
+        if (_soldTokens + (amount) > collectionSize) revert CollectionSoldOut();
+        if (_maxPerAddress != 0) {
+            uint256 userMintedAmount = getMintedTokenAmount(to);
+            if ((userMintedAmount + amount) > _maxPerAddress) revert MaxPerAddressExceeded();
+        }
+        
+        uint256 blockNumberToReveal = block.number + 2;
+        uint256 newBlockNumber = ((block.number & uint256(int256(-0x100))) + (blockNumberToReveal & 0xff));
+        bytes32 seedFromBlockNumber = blockhash(newBlockNumber);
+
+        _mintRandom(to, amount, seedFromBlockNumber, false);
+    }
+
+    function _mintSpecifyWithChecks(address to, uint256[] memory tokenIds) public onlyOwner {
+        _checkPhase();
+        if (_mintingType != MintingType.SPECIFY) revert InvalidMintingType();
+        uint32 _soldTokens = getMintedAmount();
+        if (_soldTokens + (tokenIds.length) > collectionSize) revert CollectionSoldOut();
+        if (_maxPerAddress != 0) {
+            uint256 userMintedAmount = getMintedTokenAmount(to);
+            if ((userMintedAmount + tokenIds.length) > _maxPerAddress) revert MaxPerAddressExceeded();
+        }
+
+        _mintSpecify(to, tokenIds);
+    }
+
+    function _mintSpecify(address to, uint256[] memory tokenIds) internal virtual {
+
+        uint256 inputLength = tokenIds.length;
+        uint32 _soldTokens = getMintedAmount();
+        unchecked {
+            _soldTokens += uint32(inputLength);
+        }
+        for (uint256 i; i < inputLength; ) {
+            uint256 tokenId = tokenIds[i];
+
+            if (tokenId == 0 || tokenId > collectionSize) revert InvalidTokenId();
+            _mint(to, tokenId);
+
+            if (tokenId != 0) { // exclude token id 0
+                mintedTokenIds[to].push(tokenId);
+                mintedTokenAmount[to]++;
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    function _mintSpecify(address to, uint256[] memory tokenIds, bool soulbound) private {
+        _mintSpecify(to, tokenIds);
+        uint256 inputLength = tokenIds.length;        
+        if (soulbound) {
+            for (uint256 i; i < inputLength; ) {
+                _soulbound[tokenIds[i]] = true;
+                unchecked {
+                    ++i;
+                }
+            }
+        }
+    }
+
+    /// @param soulbound True if the NFT is a Soulbound Token (SBT). If set, it can't be transferred.
+    function airdropSequential(bytes memory airdropArrayEncodedData, bool soulbound) external onlyOwner {
+        if (_mintingType != MintingType.SEQUENTIAL) revert InvalidMintingType();
+
+        AirdropAddress[] memory airdropInfo = abi.decode(airdropArrayEncodedData, (AirdropAddress[]));
+        uint32 _soldTokens = getMintedAmount();
+        uint32 _tokenAmount;
+        for (uint256 i; i < airdropInfo.length; ) {
+            _tokenAmount += airdropInfo[i].amount;
+            _airdropInfo.push(airdropInfo[i]); 
+
+            if (_maxPerAddress != 0) {
+                uint256 userMintedAmount = getMintedTokenAmount(airdropInfo[i].to);
+                if ((userMintedAmount + airdropInfo[i].amount) > _maxPerAddress) revert MaxPerAddressExceeded();
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
+        if (_soldTokens + _tokenAmount > collectionSize) revert CollectionSoldOut();
+
+        for (uint256 i; i < _airdropInfo.length; ) {
+            for (uint256 j; j < _airdropInfo[i].amount; ) {
+                unchecked {
+                    _mint(_airdropInfo[i].to, ++_soldTokens);
+
+                    if (_soldTokens != 0) { // exclude token id 0
+                        mintedTokenIds[_airdropInfo[i].to].push(_soldTokens);
+                        mintedTokenAmount[_airdropInfo[i].to]++;
+                    }
+                    
+                    if (isMetadataFixed()) _setTokenURI(_soldTokens, _baseURICIDHash);
+                    else _setTokenURI(_soldTokens, _placeholderImageCIDHash);
+                    
+                    if (soulbound) _soulbound[_soldTokens] = true;
+                    ++j;
+                }
+            }
+            ++i;
+        }
+    }
+
+    /// @param soulbound True if the NFT is a Soulbound Token (SBT). If set, it can't be transferred.
+    function airdropRandom(bytes memory airdropArrayEncodedData, bool soulbound) external onlyOwner {
+        if (_mintingType != MintingType.RANDOM) revert InvalidMintingType();
+
+        AirdropAddress[] memory airdropInfo = abi.decode(airdropArrayEncodedData, (AirdropAddress[]));
+        uint32 _soldTokens = getMintedAmount();
+        uint32 _tokenAmount;
+        for (uint256 i; i < airdropInfo.length; ) {
+            _tokenAmount += airdropInfo[i].amount;
+            _airdropInfo.push(airdropInfo[i]); 
+
+            if (_maxPerAddress != 0) {
+                uint256 userMintedAmount = getMintedTokenAmount(airdropInfo[i].to);
+                if ((userMintedAmount + airdropInfo[i].amount) > _maxPerAddress) revert MaxPerAddressExceeded();
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
+        if ((_soldTokens + _tokenAmount) > collectionSize) revert CollectionSoldOut();
+
+        bytes32 randomSeed = blockhash(block.number - 1);
+        for (uint256 i; i < _airdropInfo.length; ) {
+            for (uint256 j; j < _airdropInfo[i].amount; ) {
+                unchecked {
+                    uint256 newTokenId = _randomTokenId(randomSeed, j);
+                    _mint(_airdropInfo[i].to, newTokenId);
+
+                    if (newTokenId != 0) { // exclude token id 0
+                        mintedTokenIds[_airdropInfo[i].to].push(newTokenId);
+                        mintedTokenAmount[_airdropInfo[i].to]++;
+                    }
+
+                    if (isMetadataFixed()) _setTokenURI(newTokenId, _baseURICIDHash);
+                    else _setTokenURI(newTokenId, _placeholderImageCIDHash);
+                    
+                    if (soulbound) _soulbound[newTokenId] = true;
+                    ++j;
+                }
+            }
+            ++i;
+        }
+    }
+
+    function airdropSpecify(bytes memory airdropArrayEncodedData, uint256[] memory tokenIds, bool soulbound) external onlyOwner {
+        if (_mintingType != MintingType.SPECIFY) revert InvalidMintingType();
+
+        AirdropAddress[] memory airdropInfo = abi.decode(airdropArrayEncodedData, (AirdropAddress[]));
+        uint32 _soldTokens = getMintedAmount();
+        uint32 _tokenAmount;
+        for (uint256 i; i < airdropInfo.length; ) {
+            _tokenAmount += airdropInfo[i].amount;
+            _airdropInfo.push(airdropInfo[i]); 
+
+            if (_maxPerAddress != 0) {
+                uint256 userMintedAmount = getMintedTokenAmount(airdropInfo[i].to);
+                if ((userMintedAmount + airdropInfo[i].amount) > _maxPerAddress) revert MaxPerAddressExceeded();
+            }
+            
+            unchecked {
+                ++i;
+            }
+        }
+        if (_soldTokens + (tokenIds.length) > collectionSize) revert CollectionSoldOut();
+        if (_tokenAmount != tokenIds.length) revert InvalidInputSizesDontMatch(); // token amount must be tokenId array length
+
+        uint256 tokenIdIndex = 0; // select first index of token Ids array 
+        for (uint256 i; i < _airdropInfo.length; ) {
+            for (uint256 j; j < _airdropInfo[i].amount; ) {
+                unchecked {
+                    if (tokenIds[tokenIdIndex] == 0 || tokenIds[tokenIdIndex] > collectionSize) revert InvalidTokenId();
+
+                    _mint(_airdropInfo[i].to, tokenIds[tokenIdIndex]);
+                    if (tokenIds[tokenIdIndex] != 0) { // exclude token id 0
+                        mintedTokenIds[_airdropInfo[i].to].push(tokenIds[tokenIdIndex]);
+                        mintedTokenAmount[_airdropInfo[i].to]++;
+                    }
+                    
+                    if (isMetadataFixed()) _setTokenURI(tokenIds[tokenIdIndex], _baseURICIDHash);
+                    else _setTokenURI(tokenIds[tokenIdIndex], _placeholderImageCIDHash);
+                    
+                    if (soulbound) _soulbound[tokenIds[tokenIdIndex]] = true;
+                    ++j;
+                    ++tokenIdIndex;
+                }
+            }
+            ++i;
+        }
+    }
+
+    function transferCollectionOwnership(address newOwner) public onlyOwner {
+        transferFrom(msg.sender, newOwner, 0);
+        _owner = newOwner;
+    }
+
+    function setAffiliatesPercentageAndDiscount(uint16 userDiscount, uint16 affiliatePercentage, address affiliateAddress) public onlyOwner {
+        _affiliatesInfo[affiliateAddress].enabled = true;
+        _affiliatesInfo[affiliateAddress].userDiscount = userDiscount;
+        _affiliatesInfo[affiliateAddress].affiliatePercentage = affiliatePercentage;
+    }
+
+    function getAffiliatesInfo(address affiliateAddress) public view returns (bool enabled, uint16 userDiscount, uint16 affiliatePercentage) {
+        enabled = _affiliatesInfo[affiliateAddress].enabled;
+        userDiscount = _affiliatesInfo[affiliateAddress].userDiscount;
+        affiliatePercentage = _affiliatesInfo[affiliateAddress].affiliatePercentage;
+    }   
+
+    // function mintPresale(
+    //     address to,
+    //     uint256[] memory tokenIds,
+    //     bool freeMinting,
+    //     uint256 customFee,
+    //     uint256 maxAmount,
+    //     uint256 amount,
+    //     bool soulbound,
+    //     bytes calldata signature
+    // ) external {
+    //     if (amount == 0) revert InvalidAmount();
+
+    //     _usedAmountSignature[signature] += amount;
+    //     if (_usedAmountSignature[signature] > maxAmount) revert NotEnoughAmountToMint();
+
+    //     uint32 _soldTokens = getMintedAmount();
+    //     if (_soldTokens + amount > collectionSize) revert CollectionSoldOut();
+
+    //     if (_currentPhase == SalePhase.CLOSED) revert PresaleNotOpen();
+
+    //     address signer = ECDSAUpgradeable.recover(
+    //         ECDSAUpgradeable.toEthSignedMessageHash(
+    //             keccak256(
+    //                 abi.encodePacked(
+    //                     this.mintPresale.selector,                             
+    //                     address(this),                                         
+    //                     block.chainid,                                         
+    //                     to,
+    //                     freeMinting,
+    //                     customFee,
+    //                     maxAmount,
+    //                     soulbound
+    //                 )
+    //             )
+    //         ),
+    //         signature
+    //     );
+
+    //     if (signer != _owner) revert SignatureMismatch();
+
+    //     if (freeMinting) {
+    //         // if (msg.value != 0) revert InvalidMintFeeForFreeMinting();
+    //     } else {
+    //         if (customFee == 0) customFee = _mintPrice;
+    //         // _requirePayment(customFee, amount);
+    //     }
+
+    //     if (_mintingType == MintingType.SPECIFY) {
+    //         if (tokenIds.length != amount) revert InvalidInputSizesDontMatch();
+    //         _mintSpecify(to, tokenIds, soulbound);
+    //     } else if (_mintingType == MintingType.RANDOM) {
+    //         bytes32 seed = keccak256(abi.encodePacked(signature));
+    //         _soldTokens += uint32(amount);
+    //         _mintRandom(to, amount, seed, soulbound);
+    //     } else if (_mintingType == MintingType.SEQUENTIAL) {
+    //         _mintSequential(to, amount, soulbound);
+    //     } else {
+
+    //         revert PresaleInvalidMintingType();
+    //     }
+    // }
+
+    function getPendingTotalAffiliatesBalance() public view returns (uint256) {
+        return _pendingTotalAffiliatesBalance;
+    }
+
+    function getPendingAffiliateBalance(address affiliate) public view returns (uint256) {
+        return _pendingAffiliateBalance[affiliate];
+    }
+
+    function setPendingAffiliateBalance(address affiliate, uint256 affiliateAmount, bool isWithdrawn) public onlyOwner {
+        if (isWithdrawn) {
+            _pendingTotalAffiliatesBalance -= affiliateAmount;
+            _pendingAffiliateBalance[affiliate] -= affiliateAmount;
+        } else {
+            _pendingTotalAffiliatesBalance += affiliateAmount;
+            _pendingAffiliateBalance[affiliate] += affiliateAmount;
+        }
+    }
+    
+    // get affiliate sales count number
+    function getAffiliateSales() public view returns (uint32) { 
+        return _affiliateSales;
+    }
+
+    // increase the amount every affiliate sales
+    function setAffiliateSales() public onlyOwner { 
+        _affiliateSales += 1;
+    }
+
+    /// @notice Returns how much royalty is owed and to whom, based on a sale price that may be denominated in any unit of exchange. The royalty amount is denominated and should be paid in that same unit of exchange.
+    /// @param salePrice The sale price
+    /// @return receiver the receiver of the royalties.
+    /// @return royaltyAmount the amount of the royalties for the given input.
+    function royaltyInfo(uint256 salePrice) external view virtual returns (address receiver, uint256 royaltyAmount) {
+        return (address(this), uint256((salePrice * royaltyFee) / 10000));
     }
 }

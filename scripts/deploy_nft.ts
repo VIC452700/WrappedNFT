@@ -4,17 +4,32 @@ async function main() {
   const [owner] = await ethers.getSigners();
   console.log(await owner.getAddress());
 
-  // ---------- Ethereum Token SPC -----------------------------------------
+  // ---------------------------- mumbai -------------------------------------
+  // const WrappedCollectionNFT = await ethers.getContractFactory("WrappedCollectionNFT");
+  // const collection = await WrappedCollectionNFT.deploy();
+  // console.log('WrappedCollectionNFT Contract deployed at:', await collection.getAddress());
+
+  // const nftAddress = await collection.getAddress();
+  // // const nftAddress = '0x9dEb94F880293F565AA4d70a80c6D02AAdf77867';
+  // const wrapAddress = '0xE85c3A4C40eb47C973f3eddC18AeB97eE47d8006';
+  // const WrappedCollectionNFTProxy = await ethers.getContractFactory("WrappedCollectionNFTProxy");
+  // const tok = await WrappedCollectionNFTProxy.deploy(nftAddress, wrapAddress);
+  
+  // console.log('WrappedCollectionNFTProxy Contract deployed at:', await tok.getAddress());
+
+  // ------------------------- sepolia ---------------------------------
+  
   const WrappedCollectionNFT = await ethers.getContractFactory("WrappedCollectionNFT");
   const collection = await WrappedCollectionNFT.deploy();
   console.log('WrappedCollectionNFT Contract deployed at:', await collection.getAddress());
 
   const nftAddress = await collection.getAddress();
-  // const nftAddress = '0x3F7a7E075b6ffA94DD31e8Ef3534118B13ad41D7';
+  // const nftAddress = '0x9dEb94F880293F565AA4d70a80c6D02AAdf77867';
+  const wrapAddress = '0xa0F9d6bDf6103619360Bb3411954B638678e6309';
   const WrappedCollectionNFTProxy = await ethers.getContractFactory("WrappedCollectionNFTProxy");
-  const tok = await WrappedCollectionNFTProxy.deploy(nftAddress);
+  const tok = await WrappedCollectionNFTProxy.deploy(nftAddress, wrapAddress);
   
-  console.log(await tok.getAddress(), "createNewCollection contract address");
+  console.log('WrappedCollectionNFTProxy Contract deployed at:', await tok.getAddress());
 }
 
 // We recommend this pattern to be able to use async/await everywhere

@@ -19,55 +19,71 @@ describe("NFT Mint Test", function () {
         wrap = await WRAP.deploy();
         console.log('\tWRAP Contract deployed at:', await wrap.getAddress());
         
-        // const WrappedCollectionNFT = await ethers.getContractFactory("WrappedCollectionNFT");
-        // wrappedNFT = await WrappedCollectionNFT.deploy();
-        // console.log('\tWrappedCollectionNFT Contract deployed at:', await wrappedNFT.getAddress());
-      
-        // const WrappedCollectionNFTProxy = await ethers.getContractFactory("WrappedCollectionNFTProxy");
-        // wrappedNFTProxy = await WrappedCollectionNFTProxy.deploy(await wrappedNFT.getAddress());
-    
-        // console.log('\tWrappedCollectionNFTProxy Contract deployed at:', await wrappedNFTProxy.getAddress());
+        const WrappedCollectionNFT = await ethers.getContractFactory("WrappedCollectionNFT");
+        wrappedNFT = await WrappedCollectionNFT.deploy();
+        console.log('\tWrappedCollectionNFT Contract deployed at:', await wrappedNFT.getAddress());    
+
+        const WrappedCollectionNFTProxy = await ethers.getContractFactory("WrappedCollectionNFTProxy");
+        wrappedNFTProxy = await WrappedCollectionNFTProxy.deploy(await wrappedNFT.getAddress());
+        console.log('\tWrappedCollectionNFTProxy Contract deployed at:', await wrappedNFTProxy.getAddress());    
+
     });
 
-    // it("should create new collection with token name and symbol every time (proxy contract)", async function() {
-    //     const revenueAddresses = [
-    //         {
-    //             to: "0x12345678901234567890123456789012",
-    //             percentage: 60,
-    //         },
-    //         {
-    //             to: "0x98765432109876543210987654321098",
-    //             percentage: 40,
-    //         },
-    //     ];
-  
-    //     // Encode the RevenueAddress array using ethers.utils.defaultAbiCoder
-       
+    it("should create new collection with token name and symbol every time (proxy contract)", async function() {
 
-    //     await wrappedNFTProxy.createNewCollection("Panda NFT", "PNFT", "This is Panda NFT", 10000, 20000, 5);
+        const tokenName = 'Airplane NFT';
+        const tokenSymbol = 'AIRNFT';
+        const description = 'This is Airplane NFT';
+        const tokenInfo: string[] = [tokenName, tokenSymbol, description];
+        
+        const collectionPrice = '100000';
+        const mintPrice = '200000';
+        const nftPrice: string[] = [collectionPrice, mintPrice];
 
-    //     const collectionAddress = await wrappedNFTProxy.getCurrentCollection();
-    //     console.log("\tpanda collection nft created at ", await wrappedNFTProxy.getCurrentCollection());
+        const totalSupply = 10;
+        const baseURICIDHash = 'QmWV24rL61SVoTxtxiJhHcy29T7TCaF61kNCf8FgsF8Cgi';
+        const placeholderImageCIDHash = '';
+        
+        const revenueAddresses = [
+            { to: '0xA9aE05943539DCb601d343aF9193Df17be0348E3', percentage: 50 },
+            { to: '0xb2530c5d8496677353166cb4E705093bD800251D', percentage: 30 },
+            { to: '0x9Bc62869Ad9E43d03e97b033D4991ab6f1a9B784', percentage: 15 }
+        ];
 
-    //     console.log("\tcollection price ", await wrappedNFTProxy.getCollectionPrice(collectionAddress));
+        const royaltyFee = 700; // less than 1000
+        const soulboundCollection = false; // default - transferable disable 
 
-    //     // console.log("\tcollection token name ", await wrappedNFTProxy.getTokenName(collectionAddress));
-    //     // console.log("\tcollection token symbole ", await wrappedNFTProxy.getTokenSymbol(collectionAddress));
-    //     // console.log("\tcollection token description ", await wrappedNFTProxy.getDescription(collectionAddress));
-    //     // console.log("\tcollection collection price ", await wrappedNFTProxy.getCollectionPrice(collectionAddress));
-    //     // console.log("\tcollection mint price ", await wrappedNFTProxy.getMintPrice(collectionAddress));
-    //     // console.log("\tcollection collection size ", await wrappedNFTProxy.getCollectionSize(collectionAddress));
+        await wrappedNFTProxy.createNewCollection();
 
-    //     // await wrappedNFTProxy.createNewCollection("Rabbit NFT", "RNFT", "This is Rabbit NFT", 20000, 20000, 3);
+        
+        const collectionAddress = await wrappedNFTProxy.getCollectionAddress();
+        console.log("\tpanda collection nft created at ", await wrappedNFTProxy.getCollectionAddress());
 
-    //     // const collectionList = await wrappedNFTProxy.getCollectionList();
-    //     // for (let i=0; i<collectionList.length; i++) {
-    //     //     console.log("\tcollection ", i, " address :\t", collectionList[i]);
-    //     // }
+        // const revenueInfo = await wrappedNFTProxy.getRevenueAddressArray();
+        // for (let i =0 ; i< revenueInfo.length; i++) {
+        //     console.log("revenue ", i, ": address ", revenueInfo[i].to, "\t percent ", revenueInfo[i].percentage);
+        // }
 
-    //     // await wrappedNFTProxy.setCollection('0xCafac3dD18aC6c6e92c921884f9E4176737C052c');
-    //     // console.log("\tnew collection address \t", await wrappedNFTProxy.getCurrentCollection());
-    // });
+        // console.log("------------------test ----------------", await wrappedNFTProxy.getTestNumber());
+
+        // console.log("\tcollection token name ", await wrappedNFTProxy.getTokenName(collectionAddress));
+        // console.log("\tcollection token symbol ", await wrappedNFTProxy.getTokenSymbol(collectionAddress));
+        // console.log("\tcollection token description ", await wrappedNFTProxy.getDescription(collectionAddress));
+        
+        // console.log("\tcollection collection price ", await wrappedNFTProxy.getCollectionPrice(collectionAddress));
+        // console.log("\tcollection mint price ", await wrappedNFTProxy.getMintPrice(collectionAddress));
+        // console.log("\tcollection collection size ", await wrappedNFTProxy.getCollectionSize(collectionAddress));
+
+        // await wrappedNFTProxy.createNewCollection("Rabbit NFT", "RNFT", "This is Rabbit NFT", 20000, 20000, 3);
+
+        // const collectionList = await wrappedNFTProxy.getCollectionList();
+        // for (let i=0; i<collectionList.length; i++) {
+        //     console.log("\tcollection ", i, " address :\t", collectionList[i]);
+        // }
+
+        // await wrappedNFTProxy.setCollection('0xCafac3dD18aC6c6e92c921884f9E4176737C052c');
+        // console.log("\tnew collection address \t", await wrappedNFTProxy.getCurrentCollection());
+    });
 
     // it("should mint and burn new NFT with collection id", async function () {
     //     const collectionAddress = await wrappedNFTProxy.getCurrentCollection();
