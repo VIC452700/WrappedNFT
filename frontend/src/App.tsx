@@ -9,7 +9,6 @@ import WrappedCollectionNFTProxy from './utils/WrappedCollectionNFTProxy.json';
 import Button from './components/Button';
 import Input from './components/Input';
 import './App.css';
-import { accountSchema } from 'web3/lib/commonjs/eth.exports';
 
 declare let window: any;
 
@@ -39,9 +38,9 @@ function App() {
   // const wrappedNFTProxyAddress = "0xf301714822A7f88907e2762c40034e5d3e5dE1F3";
   
   // ---------- sepolia -----------------
-  const wrapAddress  = "0xa0F9d6bDf6103619360Bb3411954B638678e6309";
-  const wrapCollectionNFTAddress = "0x36995AbceB726140a70ef14f2d810cc254B85457"
-  const wrappedNFTProxyAddress = "0x6cb1914dfb95b30DCB020A369E3Cada67FAE837a";
+  const wrapAddress  = "0xf287A7EC6cc6bcB8262bd310e21818d4166378D2";
+  const wrapCollectionNFTAddress = "0xd440f2f4841DFFEc806D1252732e8238e1736605"
+  const wrappedNFTProxyAddress = "0x168746Fb0d63E9945F34f9aE62f281FCc8D890C0";
 
   useEffect(() => {
     if (window.ethereum) {

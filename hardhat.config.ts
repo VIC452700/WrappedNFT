@@ -11,7 +11,7 @@ module.exports = {
     hardhat: {
     },
     sepolia: {
-      url: process.env.SEPOLIA_RPC,
+      url: process.env.SEPOLIA_RPC_INFRA,
       chainId: 11155111,
       accounts: [process.env.PRIVATE_KEY!]
     },
@@ -43,6 +43,16 @@ module.exports = {
     mainnet: {
       url: process.env.POLYGON_MAINNET_RPC,
       chainId: 137,
+      accounts: [process.env.PRIVATE_KEY!]
+    },
+    bitrock_mainnet: {
+      url: process.env.POLYGON_MAINNET_RPC,
+      chainId: 137,
+      accounts: [process.env.PRIVATE_KEY!]
+    },
+    bitrock_testnet: {
+      url: process.env.BITROCK_TESTNET,
+      chainId: 7771,
       accounts: [process.env.PRIVATE_KEY!]
     }
   },
@@ -95,6 +105,14 @@ module.exports = {
       },
       {
         version: "0.8.19",
+        settings: {
+          optimizer: {
+            enabled: true
+          }
+        },
+      },
+      {
+        version: "0.8.23",
         settings: {
           optimizer: {
             enabled: true

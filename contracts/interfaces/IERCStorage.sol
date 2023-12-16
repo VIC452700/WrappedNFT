@@ -37,7 +37,7 @@ www.WrappedPlatform.com
  */
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.23;
 
 interface IERCStorage {
     /// @notice This event is emitted when a token is minted using an affiliate
