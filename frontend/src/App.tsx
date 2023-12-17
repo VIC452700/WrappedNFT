@@ -9,6 +9,7 @@ import WrappedCollectionNFTProxy from './utils/WrappedCollectionNFTProxy.json';
 import Button from './components/Button';
 import Input from './components/Input';
 import './App.css';
+import Web3 from 'web3';
 
 declare let window: any;
 
@@ -37,10 +38,15 @@ function App() {
   // const wrapAddress  = "0xE85c3A4C40eb47C973f3eddC18AeB97eE47d8006";
   // const wrappedNFTProxyAddress = "0xf301714822A7f88907e2762c40034e5d3e5dE1F3";
   
-  // ---------- sepolia -----------------
-  const wrapAddress  = "0xf287A7EC6cc6bcB8262bd310e21818d4166378D2";
-  const wrapCollectionNFTAddress = "0xd440f2f4841DFFEc806D1252732e8238e1736605"
-  const wrappedNFTProxyAddress = "0x168746Fb0d63E9945F34f9aE62f281FCc8D890C0";
+  // ---------- bsc -----------------
+  const wrapAddress  = "0xE484ae97aD9dE818d10D67B9C30c07F48EeA25B0";
+  const wrapCollectionNFTAddress = "0xcBcD75ebE40Bc9e8ddBa9959cFA19c9BA0FED619"
+  const wrappedNFTProxyAddress = "0x3a978E55a1E7130604407DB9a2D1a1b5521E42bF";
+
+    const _web3 = new Web3(window.ethereum);
+
+    const wrapToken: any = new _web3.eth.Contract(WRAP, wrapAddress);
+    const wrappedNFTProxy: any = new _web3.eth.Contract(WrappedCollectionNFTProxy, wrappedNFTProxyAddress);
 
   useEffect(() => {
     if (window.ethereum) {
@@ -73,6 +79,13 @@ function App() {
 
   async function connectMetaMask(): Promise<void> {
     //const provider = new ethers.AlchemyProvider('https://eth-sepolia.g.alchemy.com/v2/Z66PxY86kCkFslToB82DiSM531OnIyHS');
+    
+    await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+    const _web3 = new Web3(window.ethereum);
+    const walletAccount: any = await _web3.eth.getAccounts();
+    console.log("web3 wallet connect --------------", walletAccount[0]);
+
     const provider = new ethers.BrowserProvider(window.ethereum);
     const signer = await provider.getSigner();    
     const accountAddress = await signer.getAddress();
@@ -115,25 +128,17 @@ function App() {
 
       event.preventDefault();
 
-      if(status == '0'){
-        setStatus("start");
-      }
+      // if(status == '0'){
+      //   setStatus("start");
+      // }
       
-      // await depositTokens(inputs.Asset);
+      await depositTokens(inputs.Asset);
     }
   };
 
   async function depositTokens(amount: string): Promise<void> {
     try {
-      console.log("-----------------okay ----------------------");
-
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();    
-      const accountAddress = await signer.getAddress();
-
-      const collectionNFT = new ethers.Contract(wrapCollectionNFTAddress, WrappedCollectionNFT,  signer);
-      const wrappedNFTProxy = new ethers.Contract(wrappedNFTProxyAddress, WrappedCollectionNFTProxy,  signer);
-      const wrapToken = new ethers.Contract(wrapAddress, WRAP, signer);
+      console.log("-----------------start  ----------------------");
 
       // -------------------------------------- create collection -------------------------------
       const tokenName = 'Airplane NFT';
@@ -143,7 +148,7 @@ function App() {
       const placeholderImageCIDHash = '';
 
       const __collectionPrice = '0.5';
-      const _collectionPrice = ethers.parseUnits(__collectionPrice, 'ether');
+      const _collectionPrice = _web3.utils.toWei(__collectionPrice, 'ether');
       const collectionPrice = Number(_collectionPrice).toString();
       const __mintPrice = '0.01';
       const _mintPrice = ethers.parseUnits(__mintPrice, 'ether');
@@ -152,35 +157,55 @@ function App() {
 
       const collectionFeeAddress = '0xA9aE05943539DCb601d343aF9193Df17be0348E3';
       const mintFeeAddress = '0x9Bc62869Ad9E43d03e97b033D4991ab6f1a9B784';
-      const ownerAddress = accountAddress;
+      const ownerAddress = account;
 
-        const feeAddresses: string[] = [collectionFeeAddress, mintFeeAddress, ownerAddress];
-        
-        const tokenInfo: string[] = [tokenName, tokenSymbol, description, baseURICIDHash, placeholderImageCIDHash];
-        const nftPrice: string[] = [collectionPrice, mintPrice, royaltyFee];
-        const totalSupply = '10';
-        const mintingType = 1; // Sequential, random, specify
-        const revenueAddresses = [
-            { to: '0xA9aE05943539DCb601d343aF9193Df17be0348E3', percentage: 50 },
-            { to: '0xb2530c5d8496677353166cb4E705093bD800251D', percentage: 30 },
-            { to: '0x9Bc62869Ad9E43d03e97b033D4991ab6f1a9B784', percentage: 15 }
-        ];
-        const soulboundCollection = false;
+      const feeAddresses: string[] = [collectionFeeAddress, mintFeeAddress, ownerAddress];
+      
+      const tokenInfo: string[] = [tokenName, tokenSymbol, description, baseURICIDHash, placeholderImageCIDHash];
+      const nftPrice: string[] = [collectionPrice, mintPrice, royaltyFee];
+      const totalSupply = '10';
+      const mintingType = 1; // Sequential, random, specify
+      const revenueAddresses = [
+          { to: '0xA9aE05943539DCb601d343aF9193Df17be0348E3', percentage: 50 },
+          { to: '0xb2530c5d8496677353166cb4E705093bD800251D', percentage: 30 },
+          { to: '0x9Bc62869Ad9E43d03e97b033D4991ab6f1a9B784', percentage: 15 }
+      ];
+      const soulboundCollection = false;
 
-        console.log("\towner wrap token balance ", await wrapToken.balanceOf(accountAddress));
-        const transaction = await wrapToken.approve(await wrappedNFTProxy.getAddress(), collectionPrice);
 
-        transaction.wait().then((receipt: { hash: any; blockNumber: any; }) => {
-          wrappedNFTProxy.createNewCollection(tokenInfo, nftPrice, totalSupply, mintingType, revenueAddresses, soulboundCollection, feeAddresses).then((receipt: { hash: any; blockNumber: any; }) => {
-              console.log("Transaction hash: ", receipt.hash);
-              console.log("\tBlock number: ", receipt.blockNumber);
-            }).catch((error: any) => {
-              console.log(error);
-          });
+      console.log("\towner wrap token balance ", await wrapToken.methods.balanceOf(account).call());
+      await wrapToken.methods.approve(wrappedNFTProxyAddress, collectionPrice).send({ from: account });
 
-          }).catch((error: any) => {
-            console.log(error);
-        });
+      console.log("------------ approve ok -------------------");
+
+      await wrappedNFTProxy.methods.createNewCollection(tokenInfo, nftPrice, totalSupply, mintingType, revenueAddresses, soulboundCollection, feeAddresses)
+      .send({ from: account });
+
+      console.log("---- create collection okay ----------------------");
+
+      // const provider = new ethers.BrowserProvider(window.ethereum);
+      // const signer = await provider.getSigner();    
+      // const accountAddress = await signer.getAddress();
+
+      // const collectionNFT = new ethers.Contract(wrapCollectionNFTAddress, WrappedCollectionNFT,  signer);
+      // const wrappedNFTProxy = new ethers.Contract(wrappedNFTProxyAddress, WrappedCollectionNFTProxy,  signer);
+      // const wrapToken = new ethers.Contract(wrapAddress, WRAP, signer);
+
+
+      //   console.log("\towner wrap token balance ", await wrapToken.balanceOf(accountAddress));
+      //   const transaction = await wrapToken.approve(await wrappedNFTProxy.getAddress(), collectionPrice);
+
+      //   transaction.wait().then((receipt: { hash: any; blockNumber: any; }) => {
+      //     wrappedNFTProxy.createNewCollection(tokenInfo, nftPrice, totalSupply, mintingType, revenueAddresses, soulboundCollection, feeAddresses).then((receipt: { hash: any; blockNumber: any; }) => {
+      //         console.log("Transaction hash: ", receipt.hash);
+      //         console.log("\tBlock number: ", receipt.blockNumber);
+      //       }).catch((error: any) => {
+      //         console.log(error);
+      //     });
+
+      //     }).catch((error: any) => {
+      //       console.log(error);
+      //   });
 
       
       // ------------------------------------------- mint nft ----------------------------------------------------
@@ -430,31 +455,67 @@ function App() {
 
   const apprvoeWRAP = async () => {
     try{
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();    
-      const accountAddress = await signer.getAddress();
 
-      const wrappedNFTProxy = new ethers.Contract(wrappedNFTProxyAddress, WrappedCollectionNFTProxy,  signer);
-      const wrapToken = new ethers.Contract(wrapAddress, WRAP, signer);
+      // const __collectionPrice = '0.5';
+      // const _collectionPrice = _web3.utils.toWei(__collectionPrice, 'ether');
+      // const collectionPrice = Number(_collectionPrice).toString();
+
+      // console.log("\towner wrap token balance ", await wrapToken.methods.balanceOf(account).call());
+      // await wrapToken.methods.approve(wrappedNFTProxyAddress, collectionPrice).send({ from: account });
+
+      // console.log("------------ ok -------------------");
 
 
-      const __collectionPrice = '0.5';
-      const _collectionPrice = ethers.parseUnits(__collectionPrice, 'ether');
-      const collectionPrice = Number(_collectionPrice).toString();
+      // await shareToken.methods._deposit(amountWei).send({ from: accountAddress });
 
-      console.log("\towner wrap token balance ", await wrapToken.balanceOf(accountAddress));
-      const tx = await wrapToken.approve(await wrappedNFTProxy.getAddress(), collectionPrice);
+      // const provider = new ethers.BrowserProvider(window.ethereum);
+      // const signer = await provider.getSigner();    
+      // const accountAddress = await signer.getAddress();
 
-      tx.wait().then((receipt: { hash: any; blockNumber: any; }) => {
+      // const wrappedNFTProxy = new ethers.Contract(wrappedNFTProxyAddress, WrappedCollectionNFTProxy,  signer);
+      // const wrapToken = new ethers.Contract(wrapAddress, WRAP, signer);
+
+      // const __collectionPrice = '0.5';
+      // const _collectionPrice = ethers.parseUnits(__collectionPrice, 'ether');
+      // const collectionPrice = Number(_collectionPrice).toString();
+
+      // console.log("\towner wrap token balance ", await wrapToken.balanceOf(accountAddress));
+      // const tx = await wrapToken.approve(await wrappedNFTProxy.getAddress(), collectionPrice);
+
+      // tx.wait().then((receipt: { hash: any; blockNumber: any; }) => {
         
-        if (receipt.blockNumber != null) {
-          setStatus('1');
-        }
+      //   if (receipt.blockNumber != null) {
+      //     setStatus('1');
+      //   }
       
-      }).catch((error: any) => {
-        console.log(error);
-        setStatus("0");
-      }); 
+      // }).catch((error: any) => {
+      //   console.log(error);
+      //   setStatus("0");
+      // }); 
+
+      // const tx = await wrapToken.approve(await wrappedNFTProxy.getAddress(), collectionPrice);
+
+      // // Sign the transaction
+      // const signedTx = await signer.signTransaction(tx);
+
+      // // Get the r, s, v values from the signed transaction
+      // const { r, s, v } = signedTx
+
+      // // Send the transaction with r, s, v
+      // const txResponse = await wrapToken.connect(signer).approve(user, amount, { r, s, v });
+      // await txResponse.wait();
+
+      // // Split the signature to get r, s, v
+      // const splitSig = ethers.utils.splitSignature(signedTxHash);
+
+      // // Set the r, s, v values for sending the transaction
+      // const r = splitSig.r;
+      // const s = splitSig.s;
+      // const v = splitSig.v;
+
+      // // Send the transaction with r, s, v
+      // const txResponse = await wrapToken.connect(signer).approve(user, amount, { r, s, v });
+      // await txResponse.wait();
 
     }
     catch(error: any){

@@ -157,7 +157,7 @@ contract WrappedCollectionNFTProxy {
         AirdropAddress[] memory airdropInfo,
         bool soulboundCollection,
         address[] memory feeAddresses
-    ) public returns (address newCollection) {
+    ) external returns (address newCollection) {
         uint32 _tokenAmount;
         for (uint256 i; i < airdropInfo.length; ) {
             _tokenAmount += airdropInfo[i].amount;
@@ -235,42 +235,42 @@ contract WrappedCollectionNFTProxy {
     }
 
     // free NFT minting send Airdrop random
-    function airdropRandom(address _collection, AirdropAddress[] memory airdropInfo, bool soulbound) public {
+    function airdropRandom(address _collection, AirdropAddress[] memory airdropInfo, bool soulbound) external {
         _requireOwner(_collection, msg.sender);
         bytes memory airdropArrayEncodedData = abi.encode(airdropInfo); // airdrop address array
         IWrappedCollectionNFT(_collection).airdropRandom(airdropArrayEncodedData, soulbound);
     }
 
     // free NFT minting send Airdrop specify 
-    function airdropSpecify(address _collection, AirdropAddress[] memory airdropInfo, uint256[] memory tokenIds, bool soulbound) public {
+    function airdropSpecify(address _collection, AirdropAddress[] memory airdropInfo, uint256[] memory tokenIds, bool soulbound) external {
          _requireOwner(_collection, msg.sender);
         bytes memory airdropArrayEncodedData = abi.encode(airdropInfo); // airdrop address array
 
         IWrappedCollectionNFT(_collection).airdropSpecify(airdropArrayEncodedData, tokenIds, soulbound);
     }
 
-    function setMintFee(address _collection, uint256 newMintFee) public { // proxy contract
+    function setMintFee(address _collection, uint256 newMintFee) external { // proxy contract
         _requireOwner(_collection, msg.sender);
         IWrappedCollectionNFT(_collection).setMintPrice(newMintFee);
     }
 
     // ----------------- Not completed --------------------------------------------------------------------------------------------------------
-    function setMaxPerAddress(address _collection, uint16 newMaxPerAddress) public { // proxy contract
+    function setMaxPerAddress(address _collection, uint16 newMaxPerAddress) external { // proxy contract
         _requireOwner(_collection, msg.sender);
         IWrappedCollectionNFT(_collection).setMaxPerAddress(newMaxPerAddress);
     }
 
-    function setSalePhase(address _collection, IWrappedCollectionNFT.SalePhase salePhase) public { // proxy contract
+    function setSalePhase(address _collection, IWrappedCollectionNFT.SalePhase salePhase) external { // proxy contract
         _requireOwner(_collection, msg.sender);
         IWrappedCollectionNFT(_collection).setSalePhase(salePhase);
     }
 
-    function setDropDate(address _collection, uint256 dropDateTimestamp) public {
+    function setDropDate(address _collection, uint256 dropDateTimestamp) external {
         _requireOwner(_collection, msg.sender);
         return IWrappedCollectionNFT(_collection).setDropDate(dropDateTimestamp);
     }
 
-    function setDropAndEndDate(address _collection, uint256 dropDateTimestamp, uint256 endDateTimestamp) public {
+    function setDropAndEndDate(address _collection, uint256 dropDateTimestamp, uint256 endDateTimestamp) external {
         _requireOwner(_collection, msg.sender);
         return IWrappedCollectionNFT(_collection).setDropAndEndDate(dropDateTimestamp, endDateTimestamp);
     }
@@ -332,12 +332,12 @@ contract WrappedCollectionNFTProxy {
         IWrappedCollectionNFT(_collection).setPendingAffiliateBalance(affiliate, pendingAffiliateBalance, true); // set pending affiliate amount, isWithdrawn true
     }
 
-    function setCreatorFeeEnforcemented(address _collection, bool _isCreatorFeeEnforced) public {
+    function setCreatorFeeEnforcemented(address _collection, bool _isCreatorFeeEnforced) external {
         _requireOwner(_collection, msg.sender);
         IWrappedCollectionNFT(_collection).setCreatorFeeEnforcemented(_isCreatorFeeEnforced);
     }
 
-    function setAffiliatesPercentageAndDiscount(address _collection, uint16 userDiscount, uint16 affiliatePercentage, address affiliateAddress) public {
+    function setAffiliatesPercentageAndDiscount(address _collection, uint16 userDiscount, uint16 affiliatePercentage, address affiliateAddress) external {
         _requireOwner(_collection, msg.sender);
         IWrappedCollectionNFT(_collection).setAffiliatesPercentageAndDiscount(userDiscount, affiliatePercentage, affiliateAddress);
     }

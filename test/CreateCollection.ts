@@ -91,6 +91,7 @@ describe("Create Collection Test", function () {
     //     const _salesPhase = await wrappedNFTProxy.getSalePhase(collectionAddress);
         
     //     const currentPhase = Number(_salesPhase).toString();
+    
     //     switch (currentPhase) {
     //         case '0': {
     //             console.log("\tCurrent phase CLOSED");
