@@ -190,6 +190,13 @@ interface IERCStorage {
         uint16 userDiscount;
     }
 
+    struct WhitelistAddress {
+        address to;
+        uint256 mintFee;
+        uint256 maxAmount;
+        bool soulbound;
+    }
+
     enum SalePhase { 
         CLOSED,
         PRESALE,

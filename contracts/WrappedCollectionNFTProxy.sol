@@ -69,11 +69,7 @@ contract WrappedCollectionNFTProxy {
     address[] private collectionList;
 
     event CollectionCreated(address _newCollection);
-
-    /// @notice This event is emitted when a token is minted using an affiliate
-    /// @param affiliate The affiliate address
     event AffiliateSell(address indexed affiliate);
-
 
     function _requireOwner(address _collection, address _user) internal view {
         address owner = IWrappedCollectionNFT(_collection).getOwnerAddress();
@@ -254,40 +250,28 @@ contract WrappedCollectionNFTProxy {
         IWrappedCollectionNFT(_collection).setMintPrice(newMintFee);
     }
 
-    // ----------------- Not completed --------------------------------------------------------------------------------------------------------
     function setMaxPerAddress(address _collection, uint16 newMaxPerAddress) external { // proxy contract
         _requireOwner(_collection, msg.sender);
         IWrappedCollectionNFT(_collection).setMaxPerAddress(newMaxPerAddress);
     }
 
-    function setSalePhase(address _collection, IWrappedCollectionNFT.SalePhase salePhase) external { // proxy contract
+    function setSalePhase(address _collection, IWrappedCollectionNFT.SalePhase salePhase, uint256 dropDateTimestamp, uint256 endDateTimestamp) external {
         _requireOwner(_collection, msg.sender);
-        IWrappedCollectionNFT(_collection).setSalePhase(salePhase);
+        IWrappedCollectionNFT(_collection).setSalePhase(salePhase, dropDateTimestamp, endDateTimestamp);
     }
 
-    function setDropDate(address _collection, uint256 dropDateTimestamp) external {
-        _requireOwner(_collection, msg.sender);
-        return IWrappedCollectionNFT(_collection).setDropDate(dropDateTimestamp);
-    }
+    function mintPresale(address _collection, address to, uint256 amount) external payable {
+        require(isWhitelisted(_collection, to), "Invalid whitelist user (proxy side)");
 
-    function setDropAndEndDate(address _collection, uint256 dropDateTimestamp, uint256 endDateTimestamp) external {
-        _requireOwner(_collection, msg.sender);
-        return IWrappedCollectionNFT(_collection).setDropAndEndDate(dropDateTimestamp, endDateTimestamp);
-    }
+        IWrappedCollectionNFT.WhitelistAddress memory userWhitelist = getUserWhitelist(_collection, to);
+        uint256 _mintPrice = userWhitelist.mintFee;
+        uint256 totalPrice = _mintPrice * amount;
 
-    // function mintPresale(
-    //     address _collection,
-    //     address to,
-    //     uint256[] memory tokenIds,
-    //     bool freeMinting,
-    //     uint256 customFee,
-    //     uint256 maxAmount,
-    //     uint256 amount,
-    //     bool soulbound,
-    //     bytes calldata signature
-    // ) public {
-    //     IWrappedCollectionNFT(_collection).mintPresale(to, tokenIds, freeMinting, customFee, maxAmount, amount, soulbound, signature);
-    // }
+        _requirePayment(_mintPrice, amount); // check the eth balance
+        
+        IWrappedCollectionNFT(_collection).setWithdrawBalance(totalPrice);
+        IWrappedCollectionNFT(_collection).mintPresale(to, amount);
+    }
 
     function withdraw(address _collection) external {
         _requireOwner(_collection, msg.sender);
@@ -337,6 +321,10 @@ contract WrappedCollectionNFTProxy {
         IWrappedCollectionNFT(_collection).setCreatorFeeEnforcemented(_isCreatorFeeEnforced);
     }
 
+    function getCreatorFeeEnforcemented(address _collection) public view returns (bool) {
+        return IWrappedCollectionNFT(_collection).getCreatorFeeEnforcemented();
+    }
+
     function setAffiliatesPercentageAndDiscount(address _collection, uint16 userDiscount, uint16 affiliatePercentage, address affiliateAddress) external {
         _requireOwner(_collection, msg.sender);
         IWrappedCollectionNFT(_collection).setAffiliatesPercentageAndDiscount(userDiscount, affiliatePercentage, affiliateAddress);
@@ -344,10 +332,6 @@ contract WrappedCollectionNFTProxy {
     
     function getAffiliatesInfo(address _collection, address affiliateAddress) public view returns (bool enabled, uint16 userDiscount, uint16 affiliatePercentage) {
         return IWrappedCollectionNFT(_collection).getAffiliatesInfo(affiliateAddress);
-    }
-
-    function getCreatorFeeEnforcemented(address _collection) public view returns (bool) {
-        return IWrappedCollectionNFT(_collection).getCreatorFeeEnforcemented();
     }
 
     function getImplementationAddress() public view returns (address) {
@@ -433,11 +417,7 @@ contract WrappedCollectionNFTProxy {
     }
 
     function getTotalCollectionBalance(address _collection) public view returns (uint256) {
-        uint256 withdrawBalance = getWithdrawBalance(_collection);
-        uint256 pendingTotalAffiliateBalance = getPendingTotalAffiliatesBalance(_collection);
-        uint256 totalCollectionBalance = withdrawBalance + pendingTotalAffiliateBalance;
-
-        return totalCollectionBalance;
+        return IWrappedCollectionNFT(_collection).getTotalCollectionBalance();
     }
 
     function getRoyaltyFee(address _collection) public view returns (uint256) {
@@ -448,8 +428,6 @@ contract WrappedCollectionNFTProxy {
         return IWrappedCollectionNFT(_collection).royaltyInfo(salePrice);
     }
 
-    /// @notice Max amount of NFTs to be hold per address.
-    /// @return Max per address allowed.
     function getMaxPerAddress(address _collection) public view returns (uint16) {
         return IWrappedCollectionNFT(_collection).getMaxPerAddress();
     }
@@ -469,6 +447,18 @@ contract WrappedCollectionNFTProxy {
     function getMintedTokenAmount(address _collection, address owner) public view returns (uint256) {
         return IWrappedCollectionNFT(_collection).getMintedTokenAmount(owner);
     }
+
+    function getTotalMintedTokenIds(address _collection) public view returns (uint256[] memory) {
+        return IWrappedCollectionNFT(_collection).getTotalMintedTokenIds();
+    }
+
+    function isWhitelisted(address _collection, address _user) public view returns (bool) {
+        return IWrappedCollectionNFT(_collection).isWhitelisted(_user);
+    }
+
+    function getUserWhitelist(address _collection, address _user) public view returns (IWrappedCollectionNFT.WhitelistAddress memory) {
+        return IWrappedCollectionNFT(_collection).getUserWhitelist(_user);
+    } 
 
     // Function to receive Ether. msg.data must be empty
     receive() external payable {}
@@ -513,7 +503,7 @@ contract WrappedCollectionNFTProxy {
         require(msg.value == (p_mintPrice * amount), 'Invalid mint fee');
     }
 
-    function burnNFTWithCollection(address _collection, uint256 _tokenId) public {
+    function burnNFTWithCollection(address _collection, uint256 _tokenId) external {
         _requireOwner(_collection, msg.sender);
         IWrappedCollectionNFT(_collection).burn(_tokenId);
     }
@@ -566,8 +556,18 @@ contract WrappedCollectionNFTProxy {
         return IWrappedCollectionNFT(_collection).getAffiliateSales();
     }
 
-    function revealMetadata(address _collection, string memory baseURIHash) public {
+    function revealMetadata(address _collection, string memory baseURIHash) external {
         _requireOwner(_collection, msg.sender);
         IWrappedCollectionNFT(_collection).revealMetadata(baseURIHash);
     } 
+
+    function setWhitelistInfo(address _collection, IWrappedCollectionNFT.WhitelistAddress[] memory whitelistInfo) external {
+        _requireOwner(_collection, msg.sender);
+        bytes memory whitelistEncodedData = abi.encode(whitelistInfo); // whitelist address array
+        IWrappedCollectionNFT(_collection).setWhitelistInfo(whitelistEncodedData);
+    }
+
+    function getWhitelistInfo(address _collection) public view returns (IWrappedCollectionNFT.WhitelistAddress[] memory) {
+        return IWrappedCollectionNFT(_collection).getWhitelistInfo();
+    }
 }

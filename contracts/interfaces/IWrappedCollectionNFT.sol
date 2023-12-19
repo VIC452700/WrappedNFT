@@ -108,16 +108,7 @@ interface IWrappedCollectionNFT {
   function _mintSpecifyWithChecks(address to, uint256[] memory tokenIds) external;
   function setWithdrawBalance(uint256 amount) external;
   function setWithdrawnAmount(uint256 amount) external;
-  function mintPresale(
-        address to,
-        uint256[] memory tokenIds,
-        bool freeMinting,
-        uint256 customFee,
-        uint256 maxAmount,
-        uint256 amount,
-        bool soulbound,
-        bytes calldata signature
-    ) external;
+  function mintPresale(address to, uint256 amount) external;
 
   function collectionFeeAddress() external view returns (address);
   function mintFeeAddress() external view returns (address);
@@ -150,22 +141,25 @@ interface IWrappedCollectionNFT {
   function getMintPrice() external view returns (uint256);
   function getMintedAmount() external view returns (uint32);
   function getLeftAmount() external view returns (uint32);
+  function getTotalMintedTokenIds() external view returns (uint256[] memory);
   function getWithdrawBalance() external view returns (uint256);
   function getWithdrawnAmount() external view returns (uint256);
+  function getTotalCollectionBalance() external view returns (uint256);
   function setMaxPerAddress(uint16 newMaxPerAddress) external;
   function getMaxPerAddress() external view returns (uint16);
 
   function getRevenuePercent(address revenueAddress) external view returns (uint16);
   function getRevenueAddressArray() external view returns (RevenueAddress[] memory);
-  function setSalePhase(SalePhase salePhase) external;
+  function setSalePhase(SalePhase salePhase, uint256 dropDateTimestamp, uint256 endDateTimestamp) external;
   function getSalePhase() external view returns (SalePhase);
   function isMetadataFixed() external view returns (bool);
-
   function getDropDate() external view returns (uint256);
   function getEndDate() external view returns (uint256);
-  function setDropDate(uint256 dropDateTimestamp) external;
-  function setDropAndEndDate(uint256 dropDateTimestamp, uint256 endDateTimestamp) external;
 
+  function getWhitelistInfo() external view returns (WhitelistAddress[] memory);
+  function setWhitelistInfo(bytes memory whitelistEncodedData) external;
+  function isWhitelisted(address _user) external view returns (bool);
+  function getUserWhitelist(address _user) external view returns (WhitelistAddress memory);
   function setCreatorFeeEnforcemented(bool _isCreatorFeeEnforced) external;
   function getCreatorFeeEnforcemented() external view returns (bool);
   function airdropSequential(bytes memory airdropArrayEncodedData, bool soulbound) external; 
