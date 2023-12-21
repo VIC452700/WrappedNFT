@@ -54,7 +54,7 @@ contract WrappedCollectionNFT is Initializable, ERC721Upgradeable, EIP712Upgrade
     uint256 private _endDateTimestamp; // direct update part
     bool private _isCreatorFeeEnforcemented; // direct update part
     uint256 internal _pendingTotalAffiliatesBalance; // direct update part
-    uint32 internal _affiliateSales; // direct update part
+    uint32 internal _affiliateSalesTotalAmount; // direct update part
 
     address public collectionFeeAddress;
     address public mintFeeAddress;
@@ -68,9 +68,11 @@ contract WrappedCollectionNFT is Initializable, ERC721Upgradeable, EIP712Upgrade
     bool public _soulboundCollection;
     
     uint256[] internal _totalMintedTokenIds;
+    uint256[] internal _totalUnmintedTokenIds;
     RevenueAddress[] private _revenueInfo;
     AirdropAddress[] private _airdropInfo;
     WhitelistAddress[] private _whitelistInfo;
+    address[] private _affiliateArray;
     MintingType private _mintingType; // direct update part
     SalePhase private _currentPhase; // direct update part
 
@@ -81,6 +83,7 @@ contract WrappedCollectionNFT is Initializable, ERC721Upgradeable, EIP712Upgrade
     mapping(address => AffiliateInformation) internal _affiliatesInfo; // direct update part
     mapping(address => uint256) internal _pendingAffiliateBalance;
     mapping(address => WhitelistAddress) internal _userWhitelistInfo;
+    mapping(address => uint32) internal _affiliateSales;
 
     modifier onlyOwner() {
         require(msg.sender == _owner || msg.sender == _proxy, "Only collection owner(collection side) can call this function");
@@ -152,6 +155,11 @@ contract WrappedCollectionNFT is Initializable, ERC721Upgradeable, EIP712Upgrade
 
         _soulboundCollection = soulboundCollection;
         _isCreatorFeeEnforcemented = true;
+
+        // not minted token id array initialize
+        for (uint256 i = 1; i <= collectionSize; i++) {
+            _totalUnmintedTokenIds.push(i);
+        }
     }
 
     function mint(address to, uint256 tokenId) public onlyOwner {
@@ -161,6 +169,13 @@ contract WrappedCollectionNFT is Initializable, ERC721Upgradeable, EIP712Upgrade
             _totalMintedTokenIds.push(tokenId);
             mintedTokenIds[to].push(tokenId);
             mintedTokenAmount[to]++;
+
+            for (uint i = 0; i < _totalUnmintedTokenIds.length; i++) {
+                if (_totalUnmintedTokenIds[i] == tokenId) {
+                    _totalUnmintedTokenIds[i] = _totalUnmintedTokenIds[_totalUnmintedTokenIds.length - 1];
+                    _totalUnmintedTokenIds.pop();
+                }
+            }
         }
 
         if (isMetadataFixed()) _setTokenURI(tokenId, _baseURICIDHash);
@@ -202,7 +217,6 @@ contract WrappedCollectionNFT is Initializable, ERC721Upgradeable, EIP712Upgrade
         WhitelistAddress[] memory whitelistInfo = abi.decode(whitelistEncodedData, (WhitelistAddress[]));
         for (uint256 i; i < whitelistInfo.length; ) {
             _whitelistInfo.push(whitelistInfo[i]); 
-
             _userWhitelistInfo[whitelistInfo[i].to] = whitelistInfo[i]; // every user whitelist info store
             unchecked {
                 ++i;
@@ -254,6 +268,10 @@ contract WrappedCollectionNFT is Initializable, ERC721Upgradeable, EIP712Upgrade
 
     function getTotalMintedTokenIds() public view returns (uint256[] memory) {
         return _totalMintedTokenIds;
+    }
+
+    function getTotalUnmintedTokenIds() public view returns (uint256[] memory) {
+        return _totalUnmintedTokenIds;
     }
 
     function setSalePhase(SalePhase salePhase, uint256 dropDateTimestamp, uint256 endDateTimestamp) external onlyOwner { // proxy contract
@@ -526,10 +544,10 @@ contract WrappedCollectionNFT is Initializable, ERC721Upgradeable, EIP712Upgrade
         }
         if (_soldTokens + _tokenAmount > collectionSize) revert CollectionSoldOut();
 
-        for (uint256 i; i < _airdropInfo.length; ) {
-            for (uint256 j; j < _airdropInfo[i].amount; ) {
+        for (uint256 i; i < airdropInfo.length; ) {
+            for (uint256 j; j < airdropInfo[i].amount; ) {
                 unchecked {
-                    mint(_airdropInfo[i].to, ++_soldTokens);
+                    mint(airdropInfo[i].to, ++_soldTokens);
                     
                     if (soulbound) _soulbound[_soldTokens] = true;
                     ++j;
@@ -562,11 +580,11 @@ contract WrappedCollectionNFT is Initializable, ERC721Upgradeable, EIP712Upgrade
         if ((_soldTokens + _tokenAmount) > collectionSize) revert CollectionSoldOut();
 
         bytes32 randomSeed = blockhash(block.number - 1);
-        for (uint256 i; i < _airdropInfo.length; ) {
-            for (uint256 j; j < _airdropInfo[i].amount; ) {
+        for (uint256 i; i < airdropInfo.length; ) {
+            for (uint256 j; j < airdropInfo[i].amount; ) {
                 unchecked {
                     uint256 newTokenId = _randomTokenId(randomSeed, j);
-                    mint(_airdropInfo[i].to, newTokenId);
+                    mint(airdropInfo[i].to, newTokenId);
                     
                     if (soulbound) _soulbound[newTokenId] = true;
                     ++j;
@@ -599,12 +617,12 @@ contract WrappedCollectionNFT is Initializable, ERC721Upgradeable, EIP712Upgrade
         if (_tokenAmount != tokenIds.length) revert InvalidInputSizesDontMatch(); // token amount must be tokenId array length
 
         uint256 tokenIdIndex = 0; // select first index of token Ids array 
-        for (uint256 i; i < _airdropInfo.length; ) {
-            for (uint256 j; j < _airdropInfo[i].amount; ) {
+        for (uint256 i; i < airdropInfo.length; ) {
+            for (uint256 j; j < airdropInfo[i].amount; ) {
                 unchecked {
                     if (tokenIds[tokenIdIndex] == 0 || tokenIds[tokenIdIndex] > collectionSize) revert InvalidTokenId();
 
-                    mint(_airdropInfo[i].to, tokenIds[tokenIdIndex]);
+                    mint(airdropInfo[i].to, tokenIds[tokenIdIndex]);
                     
                     if (soulbound) _soulbound[tokenIds[tokenIdIndex]] = true;
                     ++j;
@@ -620,10 +638,23 @@ contract WrappedCollectionNFT is Initializable, ERC721Upgradeable, EIP712Upgrade
         _owner = newOwner;
     }
 
+    function isAffiliateAddress(address affiliate) public view returns (bool) {
+        for (uint256 i = 0; i < _affiliateArray.length; i++) {
+            if (_affiliateArray[i] == affiliate) return true;
+        }
+        return false;
+    }
+
+    function getAffiliatesAddressArray() public view returns (address[] memory) {
+        return _affiliateArray;
+    }
+
     function setAffiliatesPercentageAndDiscount(uint16 userDiscount, uint16 affiliatePercentage, address affiliateAddress) external onlyOwner {
         _affiliatesInfo[affiliateAddress].enabled = true;
         _affiliatesInfo[affiliateAddress].userDiscount = userDiscount;
         _affiliatesInfo[affiliateAddress].affiliatePercentage = affiliatePercentage;
+
+        if (!isAffiliateAddress(affiliateAddress)) _affiliateArray.push(affiliateAddress);
     }
 
     function getAffiliatesInfo(address affiliateAddress) public view returns (bool enabled, uint16 userDiscount, uint16 affiliatePercentage) {
@@ -661,14 +692,20 @@ contract WrappedCollectionNFT is Initializable, ERC721Upgradeable, EIP712Upgrade
         }
     }
     
+    // get affiliate sales total amount 
+    function getAffiliateSalesTotalAmount() public view returns (uint32) {
+        return _affiliateSalesTotalAmount;
+    }
+    
     // get affiliate sales count number
-    function getAffiliateSales() public view returns (uint32) { 
-        return _affiliateSales;
+    function getAffiliateSales(address affiliate) public view returns (uint32) { 
+        return _affiliateSales[affiliate];
     }
 
     // increase the amount every affiliate sales
-    function setAffiliateSales() external onlyOwner { 
-        _affiliateSales += 1;
+    function setAffiliateSales(address affiliate) external onlyOwner { 
+        _affiliateSalesTotalAmount += 1;
+        _affiliateSales[affiliate] += 1;
     }
 
     function royaltyInfo(uint256 salePrice) public view virtual returns (address receiver, uint256 royaltyAmount) {

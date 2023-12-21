@@ -142,6 +142,7 @@ interface IWrappedCollectionNFT {
   function getMintedAmount() external view returns (uint32);
   function getLeftAmount() external view returns (uint32);
   function getTotalMintedTokenIds() external view returns (uint256[] memory);
+  function getTotalUnmintedTokenIds() external view returns (uint256[] memory);
   function getWithdrawBalance() external view returns (uint256);
   function getWithdrawnAmount() external view returns (uint256);
   function getTotalCollectionBalance() external view returns (uint256);
@@ -169,10 +170,12 @@ interface IWrappedCollectionNFT {
   function setAffiliatesPercentageAndDiscount(uint16 userDiscount, uint16 affiliatePercentage, address affiliateAddress) external;
   function getAffiliatesInfo(address affiliateAddress) external view returns (bool enabled, uint16 userDiscount, uint16 affiliatePercentage);
   function getPendingAffiliateBalance(address affiliate) external view returns (uint256);
-  function getAffiliateSales() external view returns (uint32);
+  function setAffiliateSales(address affiliate) external;
+  function getAffiliateSales(address affiliate) external view returns (uint32);
+  function getAffiliateSalesTotalAmount() external view returns (uint32);
   function getPendingTotalAffiliatesBalance() external view returns (uint256);
   function setPendingAffiliateBalance(address affiliate, uint256 affiliateAmount, bool isWithdrawn) external;
-  function setAffiliateSales() external;
   function royaltyInfo(uint256 salePrice) external view returns (address receiver, uint256 royaltyAmount);
+  function getAffiliatesAddressArray() external view returns (address[] memory);
 }
 

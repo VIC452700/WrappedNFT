@@ -54,7 +54,7 @@ describe("Create Collection Test", function () {
     
         const tokenInfo: string[] = [tokenName, tokenSymbol, description, baseURICIDHash, placeholderImageCIDHash];
         const nftPrice: string[] = [collectionPrice, mintPrice, royaltyFee];
-        const totalSupply = '10';
+        const totalSupply = '20';
         const mintingType = 0; // 0 - Sequential, 1 - Random, 2 - Specify
         const revenueAddresses = [
             { to: '0xA9aE05943539DCb601d343aF9193Df17be0348E3', percentage: 5000 },
@@ -226,6 +226,12 @@ describe("Create Collection Test", function () {
             console.log("\tcurrent affiliateInfo affiliatePercentage ", affiliateInfo1[2]);
         }
 
+        const _array = await wrappedNFTProxy.getAffiliatesAddressArray(collectionAddress);
+        for (let i =0; i < _array.length; i++) {
+            console.log("affiliate address ", _array[i]);
+        }
+        console.log("")
+
         // current affiliate sequential minting  (require affiliate price pay)
         const amount = '3';
         const currentUserDiscount = affiliateInfo1[1];
@@ -311,29 +317,40 @@ describe("Create Collection Test", function () {
     //     // console.log("\n\t affiliate Balance after ------", affiliateBalanceafterEth);
     });
 
-    // it("should send airdrop service ", async function () {
-    //     const collectionAddress = await wrappedNFTProxy.getCollectionContractAddress();
+    it("should send airdrop service ", async function () {
+        const collectionAddress = await wrappedNFTProxy.getCollectionContractAddress();
         
-    //     // ------------------------------------------ Manage Airdrops/Free minting sequential ----------------------------- regardless current phase 
-    //     console.log("\tcurrent Minted NFT ", await wrappedNFTProxy.getMintedAmount(collectionAddress));
-    //     console.log("\tcurrent NFTs left ", await wrappedNFTProxy.getLeftAmount(collectionAddress));
+        // ------------------------------------------ Manage Airdrops/Free minting sequential ----------------------------- regardless current phase 
+        console.log("\tcurrent Minted NFT ", await wrappedNFTProxy.getMintedAmount(collectionAddress));
+        console.log("\tcurrent NFTs left ", await wrappedNFTProxy.getLeftAmount(collectionAddress));
 
-    //     const airdropAddresses = [
-    //         { to: '0xA9aE05943539DCb601d343aF9193Df17be0348E3', amount: 2 },
-    //         { to: '0xb2530c5d8496677353166cb4E705093bD800251D', amount: 1 },
-    //         { to: '0x9Bc62869Ad9E43d03e97b033D4991ab6f1a9B784', amount: 1 }
-    //     ];
-    //     const soulbound = false;
+        const airdropAddresses = [
+            { to: '0xA9aE05943539DCb601d343aF9193Df17be0348E3', amount: 2 },
+            { to: '0xb2530c5d8496677353166cb4E705093bD800251D', amount: 1 },
+            { to: '0x9Bc62869Ad9E43d03e97b033D4991ab6f1a9B784', amount: 1 }
+        ];
+        const soulbound = false;
 
-    //     await wrappedNFTProxy.airdropSequential(collectionAddress, airdropAddresses, soulbound);
+        await wrappedNFTProxy.airdropSequential(collectionAddress, airdropAddresses, soulbound);
 
-    //     const airdropInfo = await wrappedNFTProxy.getAirdropAddressArray(collectionAddress);
-    //     for (let i = 0 ; i< airdropInfo.length; i++) {
-    //         console.log("\tairdrop ", i, ": address ", airdropInfo[i].to, "\t amount ", airdropInfo[i].amount);
-    //     }
+        const airdropInfo = await wrappedNFTProxy.getAirdropAddressArray(collectionAddress);
+        for (let i = 0 ; i< airdropInfo.length; i++) {
+            console.log("\tairdrop ", i, ": address ", airdropInfo[i].to, "\t amount ", airdropInfo[i].amount);
+        }
 
-    //     console.log("\tupdated Minted NFT ", await wrappedNFTProxy.getMintedAmount(collectionAddress));
-    //     console.log("\tupdated NFTs left ", await wrappedNFTProxy.getLeftAmount(collectionAddress));
+        console.log("\tupdated Minted NFT ", await wrappedNFTProxy.getMintedAmount(collectionAddress));
+        console.log("\tupdated NFTs left ", await wrappedNFTProxy.getLeftAmount(collectionAddress));
+
+        // ----------------------- update ------------------------
+        await wrappedNFTProxy.airdropSequential(collectionAddress, airdropAddresses, soulbound);
+
+        const airdropInfo1 = await wrappedNFTProxy.getAirdropAddressArray(collectionAddress);
+        for (let i = 0 ; i< airdropInfo1.length; i++) {
+            console.log("\tairdrop ", i, ": address ", airdropInfo1[i].to, "\t amount ", airdropInfo1[i].amount);
+        }
+
+        console.log("\tupdated Minted NFT ------------", await wrappedNFTProxy.getMintedAmount(collectionAddress));
+        console.log("\tupdated NFTs left -------------", await wrappedNFTProxy.getLeftAmount(collectionAddress));
 
     //     // // ------------------------------------------ Manage Airdrops/Free minting random -----------------------------
     //     // console.log("\tcurrent Minted NFT ", await wrappedNFTProxy.getMintedAmount(collectionAddress));
@@ -377,7 +394,7 @@ describe("Create Collection Test", function () {
 
     //     // console.log("\tupdated Minted NFT ", await wrappedNFTProxy.getMintedAmount(collectionAddress));
     //     // console.log("\tupdated NFTs left ", await wrappedNFTProxy.getLeftAmount(collectionAddress));
-    // });
+    });
 
     // it("should transfer collection ownership to new user ", async function () {
     //     const collectionAddress = await wrappedNFTProxy.getCollectionContractAddress();
@@ -389,112 +406,119 @@ describe("Create Collection Test", function () {
     //     console.log("\tupdated collection owner address ", await wrappedNFTProxy.getOwnerAddress(collectionAddress));
     // });
 
-    it("should get total minted token ids of current collection ", async function() {
-        const collectionAddress = await wrappedNFTProxy.getCollectionContractAddress();
-        const tokenIds = await wrappedNFTProxy.getTotalMintedTokenIds(collectionAddress);
+    // it("should get total minted token ids of current collection ", async function() {
+    //     const collectionAddress = await wrappedNFTProxy.getCollectionContractAddress();
+    //     const tokenIds = await wrappedNFTProxy.getTotalMintedTokenIds(collectionAddress);
+
+    //     const leftTokenIds = await wrappedNFTProxy.getTotalUnmintedTokenIds(collectionAddress);
         
-        console.log("\tminted token ids are ");
-        for (let i = 0; i < tokenIds.length; i++) {
-            console.log("\t", i);
-        }
-    });
+    //     console.log("\tminted token ids are ");
+    //     for (let i = 0; i < tokenIds.length; i++) {
+    //         console.log("\t", tokenIds[i]);
+    //     }
 
-    it("should set salesPhase and presale whitelist addresses with own mint price ", async function () {
-        const collectionAddress = await wrappedNFTProxy.getCollectionContractAddress();
+    //     console.log("\tnot minted token ids are ");
+    //     for (let i = 0; i < leftTokenIds.length; i++) {
+    //         console.log("\t", leftTokenIds[i]);
+    //     }
+    // });
+
+    // it("should set salesPhase and presale whitelist addresses with own mint price ", async function () {
+    //     const collectionAddress = await wrappedNFTProxy.getCollectionContractAddress();
        
-        // ------------------------ Set whitelist information ----------------
-        const whitelistInfo = [
-            { to: '0xA9aE05943539DCb601d343aF9193Df17be0348E3', mintFee: ethers.parseEther('0.01'), maxAmount: '5', soulbound: true },
-            { to: '0xb2530c5d8496677353166cb4E705093bD800251D', mintFee: ethers.parseEther('0.02'), maxAmount: '3', soulbound: false },
-            { to: owner, mintFee: ethers.parseEther('0.03'), maxAmount: '3', soulbound: false }
-        ];
-        await wrappedNFTProxy.setWhitelistInfo(collectionAddress, whitelistInfo);
+    //     // ------------------------ Set whitelist information ----------------
+    //     const whitelistInfo = [
+    //         { to: '0xA9aE05943539DCb601d343aF9193Df17be0348E3', mintFee: ethers.parseEther('0.01'), maxAmount: '5', soulbound: true },
+    //         { to: '0xb2530c5d8496677353166cb4E705093bD800251D', mintFee: ethers.parseEther('0.02'), maxAmount: '3', soulbound: false },
+    //         { to: owner, mintFee: ethers.parseEther('0.03'), maxAmount: '3', soulbound: false }
+    //     ];
+    //     await wrappedNFTProxy.setWhitelistInfo(collectionAddress, whitelistInfo);
 
-        const currentWhitelistInfo = await wrappedNFTProxy.getWhitelistInfo(collectionAddress);
-        for (let i = 0; i < currentWhitelistInfo.length; i++) {
-            let _to = currentWhitelistInfo[i].to;
-            let _mintFee = currentWhitelistInfo[i].mintFee;
-            let _maxAmount = currentWhitelistInfo[i].maxAmount;
-            let _soulbound = currentWhitelistInfo[i].soulbound;
+    //     const currentWhitelistInfo = await wrappedNFTProxy.getWhitelistInfo(collectionAddress);
+    //     for (let i = 0; i < currentWhitelistInfo.length; i++) {
+    //         let _to = currentWhitelistInfo[i].to;
+    //         let _mintFee = currentWhitelistInfo[i].mintFee;
+    //         let _maxAmount = currentWhitelistInfo[i].maxAmount;
+    //         let _soulbound = currentWhitelistInfo[i].soulbound;
 
-            console.log("\twhitelist ", i, " : address ", _to, " mintFee ", _mintFee, " maxAmount ", _maxAmount, " soulbound ", _soulbound);
-        }
+    //         console.log("\twhitelist ", i, " : address ", _to, " mintFee ", _mintFee, " maxAmount ", _maxAmount, " soulbound ", _soulbound);
+    //     }
 
-        // set the sales phase 
-        const _time = Date.now();
-        const dropDateTime = Math.floor(_time / 1000);
-        const endDateTime = dropDateTime + 1000000; // + 1000000 seconds
-        const dropDateTimestamp = dropDateTime.toString();
-        const endDateTimestamp = endDateTime.toString();
-        const newPhase = 1; // 0 - closed, 1 - presale, 2 - public, 3 - drop date, 4 - drop and end date
-        await wrappedNFTProxy.setSalePhase(collectionAddress, newPhase, dropDateTimestamp, endDateTimestamp);
+    //     // set the sales phase 
+    //     const _time = Date.now();
+    //     const dropDateTime = Math.floor(_time / 1000);
+    //     const endDateTime = dropDateTime + 1000000; // + 1000000 seconds
+    //     const dropDateTimestamp = dropDateTime.toString();
+    //     const endDateTimestamp = endDateTime.toString();
+    //     const newPhase = 1; // 0 - closed, 1 - presale, 2 - public, 3 - drop date, 4 - drop and end date
+    //     await wrappedNFTProxy.setSalePhase(collectionAddress, newPhase, dropDateTimestamp, endDateTimestamp);
 
-        // check presale is active 
-        const currentSalePhase = await wrappedNFTProxy.getSalePhase(collectionAddress);
-        if(parseInt(currentSalePhase) != 1) {
-            console.log("\tpresale is not activated");
-        } else {
-            console.log("\tpresale is activated");
-        }
+    //     // check presale is active 
+    //     const currentSalePhase = await wrappedNFTProxy.getSalePhase(collectionAddress);
+    //     if(parseInt(currentSalePhase) != 1) {
+    //         console.log("\tpresale is not activated");
+    //     } else {
+    //         console.log("\tpresale is activated");
+    //     }
 
-        // check user address is in the whitelist list
-        const userAddress1 = '0xA9aE05943539DCb601d343aF9193Df17be0348E3';
-        const userAddress2 = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
-        const status1 = await wrappedNFTProxy.isWhitelisted(collectionAddress, userAddress1);
-        const status2 = await wrappedNFTProxy.isWhitelisted(collectionAddress, userAddress2);
-        console.log("\tuser 1 whitelisted enabled ", status1); // true
-        console.log("\tuser 2 whitelisted enabled ", status2); // false
+    //     // check user address is in the whitelist list
+    //     const userAddress1 = '0xA9aE05943539DCb601d343aF9193Df17be0348E3';
+    //     const userAddress2 = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
+    //     const status1 = await wrappedNFTProxy.isWhitelisted(collectionAddress, userAddress1);
+    //     const status2 = await wrappedNFTProxy.isWhitelisted(collectionAddress, userAddress2);
+    //     console.log("\tuser 1 whitelisted enabled ", status1); // true
+    //     console.log("\tuser 2 whitelisted enabled ", status2); // false
 
-        // get user whitelist info after check it
-        const userWhitelist = await wrappedNFTProxy.getUserWhitelist(collectionAddress, owner);
-        console.log("\tuser whitelist info : address ", userWhitelist.to, " mintFee ", userWhitelist.mintFee, " maxAmount ", userWhitelist.maxAmount, " soulbound ", userWhitelist.soulbound);
+    //     // get user whitelist info after check it
+    //     const userWhitelist = await wrappedNFTProxy.getUserWhitelist(collectionAddress, owner);
+    //     console.log("\tuser whitelist info : address ", userWhitelist.to, " mintFee ", userWhitelist.mintFee, " maxAmount ", userWhitelist.maxAmount, " soulbound ", userWhitelist.soulbound);
 
-        const tx = await wrappedNFTProxy.mintPresale(collectionAddress, owner, '3', {
-            value: ethers.parseEther("0.09"),
-        });
-        await tx.wait();
-        const mintedAmount = await wrappedNFTProxy.getMintedAmount(collectionAddress);
-        console.log("\tminted amount ---- ", mintedAmount);
+    //     const tx = await wrappedNFTProxy.mintPresale(collectionAddress, owner, '3', {
+    //         value: ethers.parseEther("0.09"),
+    //     });
+    //     await tx.wait();
+    //     const mintedAmount = await wrappedNFTProxy.getMintedAmount(collectionAddress);
+    //     console.log("\tminted amount ---- ", mintedAmount);
 
-        const currentWithdrawBalance = await wrappedNFTProxy.getWithdrawBalance(collectionAddress);
-        const balanceEth = ethers.formatEther(currentWithdrawBalance);
-        console.log("\tcurrent withdraw balance ", balanceEth);
+    //     const currentWithdrawBalance = await wrappedNFTProxy.getWithdrawBalance(collectionAddress);
+    //     const balanceEth = ethers.formatEther(currentWithdrawBalance);
+    //     console.log("\tcurrent withdraw balance ", balanceEth);
 
-        // withdraw collection mint fee balance to revenue addresses -------------------------------------- confirm ---------
-        await wrappedNFTProxy.withdraw(collectionAddress);
-        // const revenueAddresses = [
-        //     { to: '0xA9aE05943539DCb601d343aF9193Df17be0348E3', percentage: 5000 },
-        //     { to: '0xb2530c5d8496677353166cb4E705093bD800251D', percentage: 3000 },
-        //     { to: '0x9Bc62869Ad9E43d03e97b033D4991ab6f1a9B784', percentage: 2000 }
-        // ];
+    //     // withdraw collection mint fee balance to revenue addresses -------------------------------------- confirm ---------
+    //     await wrappedNFTProxy.withdraw(collectionAddress);
+    //     // const revenueAddresses = [
+    //     //     { to: '0xA9aE05943539DCb601d343aF9193Df17be0348E3', percentage: 5000 },
+    //     //     { to: '0xb2530c5d8496677353166cb4E705093bD800251D', percentage: 3000 },
+    //     //     { to: '0x9Bc62869Ad9E43d03e97b033D4991ab6f1a9B784', percentage: 2000 }
+    //     // ];
 
-        const userBalance1 = await ethers.provider.getBalance('0xA9aE05943539DCb601d343aF9193Df17be0348E3');
-        const userBalance2 = await ethers.provider.getBalance('0xb2530c5d8496677353166cb4E705093bD800251D');
-        const userBalance3 = await ethers.provider.getBalance('0x9Bc62869Ad9E43d03e97b033D4991ab6f1a9B784');
-        const ethBalance1 = ethers.formatEther(userBalance1);
-        const ethBalance2 = ethers.formatEther(userBalance2);
-        const ethBalance3 = ethers.formatEther(userBalance3);
-        console.log("\n\tuser 1 updated eth balance ", ethBalance1);
-        console.log("\tuser 2 updated eth balance ", ethBalance2);
-        console.log("\tuser 3 updated eth balance ", ethBalance3);
+    //     const userBalance1 = await ethers.provider.getBalance('0xA9aE05943539DCb601d343aF9193Df17be0348E3');
+    //     const userBalance2 = await ethers.provider.getBalance('0xb2530c5d8496677353166cb4E705093bD800251D');
+    //     const userBalance3 = await ethers.provider.getBalance('0x9Bc62869Ad9E43d03e97b033D4991ab6f1a9B784');
+    //     const ethBalance1 = ethers.formatEther(userBalance1);
+    //     const ethBalance2 = ethers.formatEther(userBalance2);
+    //     const ethBalance3 = ethers.formatEther(userBalance3);
+    //     console.log("\n\tuser 1 updated eth balance ", ethBalance1);
+    //     console.log("\tuser 2 updated eth balance ", ethBalance2);
+    //     console.log("\tuser 3 updated eth balance ", ethBalance3);
 
-        // get revenue address array
-        const revenueArray = await wrappedNFTProxy.getRevenueAddressArray(collectionAddress);
-        for (let i = 0; i < revenueArray.length; i ++) {
-            console.log("\trevenue ", i, " address ", revenueArray[i].to, " percent ", parseInt(revenueArray[i].percentage)/100, "%");
-        }
+    //     // get revenue address array
+    //     const revenueArray = await wrappedNFTProxy.getRevenueAddressArray(collectionAddress);
+    //     for (let i = 0; i < revenueArray.length; i ++) {
+    //         console.log("\trevenue ", i, " address ", revenueArray[i].to, " percent ", parseInt(revenueArray[i].percentage)/100, "%");
+    //     }
 
-        // set creator fee enforcement
-        await wrappedNFTProxy.setCreatorFeeEnforcemented(collectionAddress, true);
-        const currentStatus = await wrappedNFTProxy.getCreatorFeeEnforcemented(collectionAddress);
-        console.log("\tcurrent enforcement status ", currentStatus);
+    //     // set creator fee enforcement
+    //     await wrappedNFTProxy.setCreatorFeeEnforcemented(collectionAddress, true);
+    //     const currentStatus = await wrappedNFTProxy.getCreatorFeeEnforcemented(collectionAddress);
+    //     console.log("\tcurrent enforcement status ", currentStatus);
 
 
-        // Utils page ----------------- token id -> owner address
-        const tokenId = '3';
-        const userAddress = await wrappedNFTProxy.getOwnerOf(collectionAddress, tokenId);
-        console.log("\ttoken id 3  => owner address ", userAddress);
-    });
+    //     // Utils page ----------------- token id -> owner address
+    //     const tokenId = '3';
+    //     const userAddress = await wrappedNFTProxy.getOwnerOf(collectionAddress, tokenId);
+    //     console.log("\ttoken id 3  => owner address ", userAddress);
+    // });
 
 
 });

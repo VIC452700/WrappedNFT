@@ -329,6 +329,10 @@ contract WrappedCollectionNFTProxy {
         _requireOwner(_collection, msg.sender);
         IWrappedCollectionNFT(_collection).setAffiliatesPercentageAndDiscount(userDiscount, affiliatePercentage, affiliateAddress);
     }
+
+    function getAffiliatesAddressArray(address _collection) public view returns (address[] memory) {
+        return IWrappedCollectionNFT(_collection).getAffiliatesAddressArray();
+    }
     
     function getAffiliatesInfo(address _collection, address affiliateAddress) public view returns (bool enabled, uint16 userDiscount, uint16 affiliatePercentage) {
         return IWrappedCollectionNFT(_collection).getAffiliatesInfo(affiliateAddress);
@@ -452,6 +456,10 @@ contract WrappedCollectionNFTProxy {
         return IWrappedCollectionNFT(_collection).getTotalMintedTokenIds();
     }
 
+    function getTotalUnmintedTokenIds(address _collection) public view returns (uint256[] memory) {
+        return IWrappedCollectionNFT(_collection).getTotalUnmintedTokenIds();
+    }
+
     function isWhitelisted(address _collection, address _user) public view returns (bool) {
         return IWrappedCollectionNFT(_collection).isWhitelisted(_user);
     }
@@ -552,8 +560,8 @@ contract WrappedCollectionNFTProxy {
         return IWrappedCollectionNFT(_collection).getAirdropAddressArray();
     }
 
-    function getAffiliateSales(address _collection) public view returns (uint32) {
-        return IWrappedCollectionNFT(_collection).getAffiliateSales();
+    function getAffiliateSales(address _collection, address affiliate) public view returns (uint32) {
+        return IWrappedCollectionNFT(_collection).getAffiliateSales(affiliate);
     }
 
     function revealMetadata(address _collection, string memory baseURIHash) external {
